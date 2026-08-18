@@ -49,6 +49,8 @@ public static class ShiftCalculationService
         return $"{abs.Hours}h {abs.Minutes}m {abs.Seconds}s {label}";
     }
 
+    public static bool IsToday(ShiftRecord shift) => shift.FullDate == DateOnly.FromDateTime(DateTime.Now);
+
     public static TimeSpan GetTimeSpent(ShiftRecord shift)
     {
         var now = TimeOnly.FromDateTime(DateTime.Now);
@@ -60,6 +62,11 @@ public static class ShiftCalculationService
         var now = TimeOnly.FromDateTime(DateTime.Now);
         return target.ToTimeSpan() - now.ToTimeSpan();
     }
+
+    public static TimeSpan GetActualHoursWorked(ShiftRecord shift) =>
+        shift.ActualExitTime.HasValue
+            ? shift.ActualExitTime.Value.ToTimeSpan() - shift.EntryTime.ToTimeSpan()
+            : TimeSpan.Zero;
 
     public static string FormatDuration(TimeSpan span)
     {

@@ -307,10 +307,6 @@ static void ViewHistory(ShiftStorageService storage)
 
 static void PrintShiftSummary(ShiftRecord shift, ShiftStorageService storage, EmailService emailService)
 {
-    var spent = ShiftCalculationService.GetTimeSpent(shift);
-    var left95 = ShiftCalculationService.GetTimeLeft(shift, shift.Exit95);
-    var left100 = ShiftCalculationService.GetTimeLeft(shift, shift.Exit100);
-
     Console.WriteLine();
     Console.WriteLine("========================================");
     Console.WriteLine($"      SHIFT SUMMARY - {shift.Date}");
@@ -322,13 +318,32 @@ static void PrintShiftSummary(ShiftRecord shift, ShiftStorageService storage, Em
     Console.WriteLine($"Exit (100%):     {shift.Exit100:h:mm:ss tt}");
     Console.WriteLine($"Status:          {ShiftCalculationService.GetEntryStatus(shift)}");
     Console.WriteLine("----------------------------------------");
-    Console.WriteLine($"Time Spent So Far:  {ShiftCalculationService.FormatDuration(spent)}");
-    Console.WriteLine(left95 > TimeSpan.Zero
-        ? $"Time Left (95%):    {ShiftCalculationService.FormatDuration(left95)}"
-        : "Time Left (95%):    reached");
-    Console.WriteLine(left100 > TimeSpan.Zero
-        ? $"Time Left (100%):   {ShiftCalculationService.FormatDuration(left100)}"
-        : "Time Left (100%):   reached");
+
+    if (ShiftCalculationService.IsToday(shift))
+    {
+        var spent = ShiftCalculationService.GetTimeSpent(shift);
+        var left95 = ShiftCalculationService.GetTimeLeft(shift, shift.Exit95);
+        var left100 = ShiftCalculationService.GetTimeLeft(shift, shift.Exit100);
+
+        Console.WriteLine($"Time Spent So Far:  {ShiftCalculationService.FormatDuration(spent)}");
+        Console.WriteLine(left95 > TimeSpan.Zero
+            ? $"Time Left (95%):    {ShiftCalculationService.FormatDuration(left95)}"
+            : "Time Left (95%):    reached");
+        Console.WriteLine(left100 > TimeSpan.Zero
+            ? $"Time Left (100%):   {ShiftCalculationService.FormatDuration(left100)}"
+            : "Time Left (100%):   reached");
+    }
+    else if (shift.ActualExitTime.HasValue)
+    {
+        var worked = ShiftCalculationService.GetActualHoursWorked(shift);
+        Console.WriteLine($"Actual Exit Time:   {shift.ActualExitTime:h:mm:ss tt}");
+        Console.WriteLine($"Hours Worked:       {ShiftCalculationService.FormatDuration(worked)} (day complete)");
+    }
+    else
+    {
+        Console.WriteLine("Day complete - no actual exit time was recorded.");
+    }
+
     Console.WriteLine("----------------------------------------");
     Console.WriteLine(AttendanceReportService.FormatWeekSummary(storage.LoadAll(), emailService.RequiredOfficeDaysPerWeek));
     Console.WriteLine(AttendanceReportService.FormatWeeklyHoursSummary(storage.LoadAll(), emailService.DailyHourGoal));
