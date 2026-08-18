@@ -180,6 +180,7 @@ static void ProcessPastedShift(ShiftStorageService storage, EmailService emailSe
     }
 
     var shift = ShiftCalculationService.Calculate(parsed.Date, parsed.ShiftStart, parsed.ShiftEnd, parsed.EntryTime, parsed.Location, parsed.ActualExitTime);
+    shift.IsWfh = parsed.IsWfh;
     storage.Save(shift);
 
     PrintShiftSummary(shift, storage, emailService);

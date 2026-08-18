@@ -12,6 +12,7 @@ public class ParsedAttendance
     public TimeOnly? ActualExitTime { get; set; }
     public string? Status { get; set; }
     public string? Location { get; set; }
+    public bool IsWfh { get; set; }
 }
 
 public static class AttendanceParser
@@ -52,6 +53,7 @@ public static class AttendanceParser
         TimeOnly? start = null, end = null, entry = null, actualExit = null;
         string? status = null;
         string? location = null;
+        var isWfh = false;
 
         for (var i = 0; i < lineList.Count; i++)
         {
@@ -75,8 +77,15 @@ public static class AttendanceParser
                 if (i > 0 && location is null)
                 {
                     var previous = lineList[i - 1];
-                    if (!DateRegex.IsMatch(previous) && !RangeRegex.IsMatch(previous) && !IsLikelyStatusLine(previous))
+                    if (previous.Equals("WFH", StringComparison.OrdinalIgnoreCase))
+                    {
+                        isWfh = true;
+                        location = "WFH";
+                    }
+                    else if (!DateRegex.IsMatch(previous) && !RangeRegex.IsMatch(previous) && !IsLikelyStatusLine(previous))
+                    {
                         location = previous;
+                    }
                 }
             }
             else if (entryMatch.Success && actualExit is null)
@@ -84,8 +93,18 @@ public static class AttendanceParser
                 actualExit = ParseTime(entryMatch.Groups[1].Value);
             }
 
-            if (!dateMatch.Success && !rangeMatch.Success && !entryMatch.Success && IsLikelyStatusLine(line))
-                status ??= line;
+            if (!dateMatch.Success && !rangeMatch.Success && !entryMatch.Success)
+            {
+                if (line.Equals("WFH", StringComparison.OrdinalIgnoreCase))
+                {
+                    isWfh = true;
+                    location ??= "WFH";
+                }
+                else if (IsLikelyStatusLine(line))
+                {
+                    status ??= line;
+                }
+            }
         }
 
         if (date is null || start is null || end is null || entry is null)
@@ -103,7 +122,8 @@ public static class AttendanceParser
             EntryTime = entry.Value,
             ActualExitTime = actualExit,
             Status = status,
-            Location = location
+            Location = location,
+            IsWfh = isWfh
         };
         error = "";
         return true;

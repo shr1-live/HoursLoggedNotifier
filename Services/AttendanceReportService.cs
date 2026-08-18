@@ -47,14 +47,14 @@ public static class AttendanceReportService
 
         foreach (var r in weekRecords)
         {
-            if (r.IsWfh)
-            {
-                logged += dailyGoal;
-                accountedDays++;
-            }
-            else if (r.ActualExitTime.HasValue)
+            if (r.ActualExitTime.HasValue)
             {
                 logged += r.ActualExitTime.Value.ToTimeSpan() - r.EntryTime.ToTimeSpan();
+                accountedDays++;
+            }
+            else if (r.IsWfh)
+            {
+                logged += dailyGoal;
                 accountedDays++;
             }
             else if (r.FullDate == today)
