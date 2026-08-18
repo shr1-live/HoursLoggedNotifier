@@ -1,4 +1,4 @@
-namespace HoursCompletionNotifier.Models;
+namespace HoursLoggedNotifier.Models;
 
 public class AppConfig
 {
@@ -13,5 +13,5 @@ public class EmailConfig
     public int SmtpPort { get; set; } = 587;
     public string Address { get; set; } = "";
     public string AppPassword { get; set; } = "";
-    public string DisplayName { get; set; } = "Hours Completion Notifier";
+    public string DisplayName { get; set; } = "Hours Logged Notifier";
 }

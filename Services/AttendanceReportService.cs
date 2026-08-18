@@ -1,6 +1,6 @@
-using HoursCompletionNotifier.Models;
+using HoursLoggedNotifier.Models;
 
-namespace HoursCompletionNotifier.Services;
+namespace HoursLoggedNotifier.Services;
 
 public static class AttendanceReportService
 {

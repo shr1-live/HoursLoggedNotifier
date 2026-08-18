@@ -1,4 +1,4 @@
-namespace HoursCompletionNotifier.Models;
+namespace HoursLoggedNotifier.Models;
 
 public class ShiftRecord
 {

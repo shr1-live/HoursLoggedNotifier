@@ -1,4 +1,4 @@
-# Hours Completion Notifier
+# Hours Logged Notifier
 
 A Windows console app that tracks your daily office shift, tells you when you've
 hit 95%/100% of your required hours, and fires desktop notifications reminding

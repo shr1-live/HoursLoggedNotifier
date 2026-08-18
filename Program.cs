@@ -1,6 +1,6 @@
 using System.Globalization;
-using HoursCompletionNotifier.Models;
-using HoursCompletionNotifier.Services;
+using HoursLoggedNotifier.Models;
+using HoursLoggedNotifier.Services;
 
 var storage = new ShiftStorageService();
 var emailService = new EmailService();
@@ -131,7 +131,7 @@ static void SendTestNotify(ShiftStorageService storage, EmailService emailServic
 
     if (shift is null || shift.IsWfh)
     {
-        notifier.Show("Test Notification - Hours Completion Notifier", "This is a test notification. Setup is working.\n(No office shift recorded today, so this is placeholder text.)");
+        notifier.Show("Test Notification - Hours Logged Notifier", "This is a test notification. Setup is working.\n(No office shift recorded today, so this is placeholder text.)");
         Console.WriteLine("\nTest notification sent (no office shift recorded today).\n");
         return;
     }
@@ -152,7 +152,7 @@ static void SendTestEmail(EmailService emailService)
 
     try
     {
-        emailService.Send("Test Email - Hours Completion Notifier", "This is a test email from Hours Completion Notifier. Setup is working.");
+        emailService.Send("Test Email - Hours Logged Notifier", "This is a test email from Hours Logged Notifier. Setup is working.");
         Console.WriteLine("\nTest email sent successfully.\n");
     }
     catch (Exception ex)
@@ -164,7 +164,7 @@ static void SendTestEmail(EmailService emailService)
 static void PrintHeader()
 {
     Console.WriteLine("==========================================");
-    Console.WriteLine("  HOURS COMPLETION NOTIFIER - STARTING...");
+    Console.WriteLine("  HOURS LOGGED NOTIFIER - STARTING...");
     Console.WriteLine("==========================================\n");
 }
 

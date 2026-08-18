@@ -1,7 +1,7 @@
 using System.Drawing;
 using System.Windows.Forms;
 
-namespace HoursCompletionNotifier.Services;
+namespace HoursLoggedNotifier.Services;
 
 public class NotificationService : IDisposable
 {
@@ -28,7 +28,7 @@ public class NotificationService : IDisposable
             _icon = new NotifyIcon
             {
                 Icon = SystemIcons.Information,
-                Text = "Hours Completion Notifier",
+                Text = "Hours Logged Notifier",
                 Visible = true
             };
         }

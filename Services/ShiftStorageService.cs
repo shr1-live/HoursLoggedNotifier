@@ -1,7 +1,7 @@
 using System.Text.Json;
-using HoursCompletionNotifier.Models;
+using HoursLoggedNotifier.Models;
 
-namespace HoursCompletionNotifier.Services;
+namespace HoursLoggedNotifier.Services;
 
 public class ShiftStorageService
 {

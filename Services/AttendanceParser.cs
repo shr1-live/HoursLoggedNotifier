@@ -1,7 +1,7 @@
 using System.Globalization;
 using System.Text.RegularExpressions;
 
-namespace HoursCompletionNotifier.Services;
+namespace HoursLoggedNotifier.Services;
 
 public class ParsedAttendance
 {

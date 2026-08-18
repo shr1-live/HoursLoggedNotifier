@@ -1,9 +1,9 @@
 @echo off
-title Hours Completion Notifier
+title Hours Logged Notifier
 cd /d "%~dp0"
-publish\HoursCompletionNotifier.exe
+publish\HoursLoggedNotifier.exe
 if errorlevel 1 (
   echo.
-  echo Hours Completion Notifier closed unexpectedly. Press any key to close this window.
+  echo Hours Logged Notifier closed unexpectedly. Press any key to close this window.
   pause >nul
 )
