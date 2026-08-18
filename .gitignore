@@ -1,0 +1,5 @@
+bin/
+obj/
+publish/
+shifts.json
+appsettings.json
