@@ -33,6 +33,54 @@ public static class AttendanceReportService
         return $"This week: {officeDays} office day(s), {wfhDays} WFH day(s) - target {requiredOfficeDays}/week ({status})";
     }
 
+    private const int WorkdaysPerWeek = 5;
+
+    public static string FormatWeeklyHoursSummary(List<ShiftRecord> all, TimeSpan dailyGoal)
+    {
+        var weekRecords = GetThisWeeksRecords(all);
+        var weeklyTarget = TimeSpan.FromTicks(dailyGoal.Ticks * WorkdaysPerWeek);
+
+        var now = DateTime.Now;
+        var today = DateOnly.FromDateTime(now);
+        var logged = TimeSpan.Zero;
+        var accountedDays = 0;
+
+        foreach (var r in weekRecords)
+        {
+            if (r.IsWfh)
+            {
+                logged += dailyGoal;
+                accountedDays++;
+            }
+            else if (r.ActualExitTime.HasValue)
+            {
+                logged += r.ActualExitTime.Value.ToTimeSpan() - r.EntryTime.ToTimeSpan();
+                accountedDays++;
+            }
+            else if (r.FullDate == today)
+            {
+                var spent = TimeOnly.FromDateTime(now).ToTimeSpan() - r.EntryTime.ToTimeSpan();
+                if (spent > TimeSpan.Zero) logged += spent;
+            }
+        }
+
+        var pending = weeklyTarget - logged;
+        if (pending < TimeSpan.Zero) pending = TimeSpan.Zero;
+
+        if (pending == TimeSpan.Zero)
+            return $"Weekly hours: {ShiftCalculationService.FormatDuration(logged)} / {ShiftCalculationService.FormatDuration(weeklyTarget)} - target met.";
+
+        var remainingDays = Math.Max(WorkdaysPerWeek - accountedDays, 0);
+        var line = $"Weekly hours: {ShiftCalculationService.FormatDuration(logged)} / {ShiftCalculationService.FormatDuration(weeklyTarget)} logged - {ShiftCalculationService.FormatDuration(pending)} pending";
+
+        if (remainingDays == 0)
+            return line + " (no workdays left this week).";
+
+        var perDay = TimeSpan.FromTicks(pending.Ticks / remainingDays);
+        var wfhDaysNeeded = (int)Math.Ceiling(pending.Ticks / (double)dailyGoal.Ticks);
+        return line + $" across {remainingDays} day(s) left (~{ShiftCalculationService.FormatDuration(perDay)}/day, or {wfhDaysNeeded} WFH day(s) at {ShiftCalculationService.FormatDuration(dailyGoal)} each).";
+    }
+
     public static string FormatDayWiseLog(List<ShiftRecord> all)
     {
         var weekRecords = GetThisWeeksRecords(all);

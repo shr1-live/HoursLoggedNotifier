@@ -9,6 +9,7 @@ public class ShiftRecord
     public TimeOnly EntryTime { get; set; }
     public TimeOnly Exit95 { get; set; }
     public TimeOnly Exit100 { get; set; }
+    public TimeOnly? ActualExitTime { get; set; }
     public string? Location { get; set; }
     public bool IsWfh { get; set; }
 }

@@ -1,10 +1,11 @@
+using System.Globalization;
 using HoursLoggedNotifier.Models;
 
 namespace HoursLoggedNotifier.Services;
 
 public static class ShiftCalculationService
 {
-    public static ShiftRecord Calculate(string date, TimeOnly shiftStart, TimeOnly shiftEnd, TimeOnly entryTime, string? location = null)
+    public static ShiftRecord Calculate(string date, TimeOnly shiftStart, TimeOnly shiftEnd, TimeOnly entryTime, string? location = null, TimeOnly? actualExitTime = null)
     {
         var shiftDuration = shiftEnd - shiftStart;
         if (shiftDuration < TimeSpan.Zero)
@@ -15,14 +16,26 @@ public static class ShiftCalculationService
         return new ShiftRecord
         {
             Date = date,
-            FullDate = DateOnly.FromDateTime(DateTime.Now),
+            FullDate = ResolveFullDate(date),
             ShiftStart = shiftStart,
             ShiftEnd = shiftEnd,
             EntryTime = entryTime,
             Exit95 = entryTime.Add(duration95),
             Exit100 = entryTime.Add(shiftDuration),
+            ActualExitTime = actualExitTime,
             Location = location
         };
+    }
+
+    private static DateOnly ResolveFullDate(string date)
+    {
+        var today = DateOnly.FromDateTime(DateTime.Now);
+        var parsed = DateOnly.ParseExact($"{date} {today.Year}", "d MMM yyyy", CultureInfo.InvariantCulture);
+
+        if (parsed > today.AddDays(1))
+            parsed = parsed.AddYears(-1);
+
+        return parsed;
     }
 
     public static string GetEntryStatus(ShiftRecord shift)

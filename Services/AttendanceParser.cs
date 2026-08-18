@@ -9,6 +9,7 @@ public class ParsedAttendance
     public TimeOnly ShiftStart { get; set; }
     public TimeOnly ShiftEnd { get; set; }
     public TimeOnly EntryTime { get; set; }
+    public TimeOnly? ActualExitTime { get; set; }
     public string? Status { get; set; }
     public string? Location { get; set; }
 }
@@ -48,7 +49,7 @@ public static class AttendanceParser
         var lineList = lines.Select(l => l.Trim()).Where(l => l.Length > 0).ToList();
 
         string? date = null;
-        TimeOnly? start = null, end = null, entry = null;
+        TimeOnly? start = null, end = null, entry = null, actualExit = null;
         string? status = null;
         string? location = null;
 
@@ -78,6 +79,10 @@ public static class AttendanceParser
                         location = previous;
                 }
             }
+            else if (entryMatch.Success && actualExit is null)
+            {
+                actualExit = ParseTime(entryMatch.Groups[1].Value);
+            }
 
             if (!dateMatch.Success && !rangeMatch.Success && !entryMatch.Success && IsLikelyStatusLine(line))
                 status ??= line;
@@ -96,6 +101,7 @@ public static class AttendanceParser
             ShiftStart = start.Value,
             ShiftEnd = end.Value,
             EntryTime = entry.Value,
+            ActualExitTime = actualExit,
             Status = status,
             Location = location
         };

@@ -28,6 +28,8 @@ public class EmailService
 
     public int RequiredOfficeDaysPerWeek => _config?.RequiredOfficeDaysPerWeek ?? 3;
 
+    public TimeSpan DailyHourGoal => TimeSpan.FromHours(_config?.DailyHourGoalHours ?? 9);
+
     public void Send(string subject, string body)
     {
         if (!IsConfigured || _config is null)

@@ -1,5 +1,6 @@
 bin/
 obj/
 publish/
+publish-standalone/
 shifts.json
 appsettings.json

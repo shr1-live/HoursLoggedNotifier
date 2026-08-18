@@ -120,6 +120,7 @@ static string BuildReminderBody(ShiftRecord shift, ShiftStorageService storage, 
         : "100% exit time has passed.");
 
     lines.Add(AttendanceReportService.FormatWeekSummary(storage.LoadAll(), emailService.RequiredOfficeDaysPerWeek));
+    lines.Add(AttendanceReportService.FormatWeeklyHoursSummary(storage.LoadAll(), emailService.DailyHourGoal));
 
     return string.Join("\n", lines);
 }
@@ -178,7 +179,7 @@ static void ProcessPastedShift(ShiftStorageService storage, EmailService emailSe
         return;
     }
 
-    var shift = ShiftCalculationService.Calculate(parsed.Date, parsed.ShiftStart, parsed.ShiftEnd, parsed.EntryTime, parsed.Location);
+    var shift = ShiftCalculationService.Calculate(parsed.Date, parsed.ShiftStart, parsed.ShiftEnd, parsed.EntryTime, parsed.Location, parsed.ActualExitTime);
     storage.Save(shift);
 
     PrintShiftSummary(shift, storage, emailService);
@@ -240,6 +241,7 @@ static void LogWfhDay(ShiftStorageService storage, EmailService emailService)
 
     Console.WriteLine($"\n{todayDisplay} logged as WFH.");
     Console.WriteLine(AttendanceReportService.FormatWeekSummary(storage.LoadAll(), emailService.RequiredOfficeDaysPerWeek));
+    Console.WriteLine(AttendanceReportService.FormatWeeklyHoursSummary(storage.LoadAll(), emailService.DailyHourGoal));
     Console.WriteLine();
 }
 
@@ -249,6 +251,7 @@ static void ViewWeek(ShiftStorageService storage, EmailService emailService)
     Console.WriteLine();
     Console.WriteLine(AttendanceReportService.FormatDayWiseLog(all));
     Console.WriteLine(AttendanceReportService.FormatWeekSummary(all, emailService.RequiredOfficeDaysPerWeek));
+    Console.WriteLine(AttendanceReportService.FormatWeeklyHoursSummary(all, emailService.DailyHourGoal));
     Console.WriteLine();
 }
 
@@ -268,6 +271,7 @@ static void ViewToday(ShiftStorageService storage, EmailService emailService)
     {
         Console.WriteLine($"{shift.Date}: logged as WFH.");
         Console.WriteLine(AttendanceReportService.FormatWeekSummary(storage.LoadAll(), emailService.RequiredOfficeDaysPerWeek));
+        Console.WriteLine(AttendanceReportService.FormatWeeklyHoursSummary(storage.LoadAll(), emailService.DailyHourGoal));
         Console.WriteLine();
         return;
     }
@@ -326,5 +330,6 @@ static void PrintShiftSummary(ShiftRecord shift, ShiftStorageService storage, Em
         : "Time Left (100%):   reached");
     Console.WriteLine("----------------------------------------");
     Console.WriteLine(AttendanceReportService.FormatWeekSummary(storage.LoadAll(), emailService.RequiredOfficeDaysPerWeek));
+    Console.WriteLine(AttendanceReportService.FormatWeeklyHoursSummary(storage.LoadAll(), emailService.DailyHourGoal));
     Console.WriteLine("========================================\n");
 }

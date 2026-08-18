@@ -5,6 +5,7 @@ public class AppConfig
     public EmailConfig Email { get; set; } = new();
     public int ReminderIntervalMinutes { get; set; } = 60;
     public int RequiredOfficeDaysPerWeek { get; set; } = 3;
+    public double DailyHourGoalHours { get; set; } = 9;
 }
 
 public class EmailConfig
