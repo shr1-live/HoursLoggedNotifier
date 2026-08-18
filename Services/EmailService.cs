@@ -8,10 +8,12 @@ namespace HoursLoggedNotifier.Services;
 public class EmailService
 {
     private const string PlaceholderPassword = "PUT_YOUR_OUTLOOK_APP_PASSWORD_HERE";
-    private readonly AppConfig? _config;
+    private readonly string _configPath;
+    private AppConfig? _config;
 
     public EmailService(string configPath = "appsettings.json")
     {
+        _configPath = configPath;
         if (File.Exists(configPath))
         {
             var json = File.ReadAllText(configPath);
@@ -29,6 +31,15 @@ public class EmailService
     public int RequiredOfficeDaysPerWeek => _config?.RequiredOfficeDaysPerWeek ?? 3;
 
     public TimeSpan DailyHourGoal => TimeSpan.FromHours(_config?.DailyHourGoalHours ?? 9);
+
+    public void UpdateReminderInterval(int minutes)
+    {
+        _config ??= new AppConfig();
+        _config.ReminderIntervalMinutes = minutes;
+
+        var json = JsonSerializer.Serialize(_config, new JsonSerializerOptions { WriteIndented = true });
+        File.WriteAllText(_configPath, json);
+    }
 
     public void Send(string subject, string body)
     {

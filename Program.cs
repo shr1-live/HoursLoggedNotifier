@@ -19,7 +19,7 @@ StartReminderLoop(storage, emailService, notifier);
 var running = true;
 while (running)
 {
-    Console.WriteLine("Paste your shift + biometric block below (or type: today / history / week / wfh / testemail / testnotify / exit)");
+    Console.WriteLine("Paste your shift + biometric block below (or type: today / history / week / wfh / interval / testemail / testnotify / exit)");
     Console.Write("> ");
     var firstLine = Console.ReadLine();
     if (firstLine is null) break;
@@ -43,6 +43,10 @@ while (running)
             continue;
         case "wfh":
             LogWfhDay(storage, emailService);
+            continue;
+        case "interval":
+        case "settime":
+            SetReminderInterval(emailService);
             continue;
         case "testemail":
             SendTestEmail(emailService);
@@ -123,6 +127,45 @@ static string BuildReminderBody(ShiftRecord shift, ShiftStorageService storage, 
     lines.Add(AttendanceReportService.FormatWeeklyHoursSummary(storage.LoadAll(), emailService.DailyHourGoal));
 
     return string.Join("\n", lines);
+}
+
+static void SetReminderInterval(EmailService emailService)
+{
+    Console.WriteLine($"\nCurrent reminder interval: {emailService.ReminderIntervalMinutes} min");
+    Console.WriteLine("Choose a new interval:");
+    Console.WriteLine("1) 5 minutes");
+    Console.WriteLine("2) 15 minutes");
+    Console.WriteLine("3) 30 minutes");
+    Console.WriteLine("4) 60 minutes");
+    Console.WriteLine("5) Custom");
+    Console.Write("> ");
+
+    var choice = Console.ReadLine()?.Trim();
+    int? minutes = choice switch
+    {
+        "1" => 5,
+        "2" => 15,
+        "3" => 30,
+        "4" => 60,
+        "5" => PromptCustomIntervalMinutes(),
+        _ => null
+    };
+
+    if (minutes is null || minutes <= 0)
+    {
+        Console.WriteLine("Invalid choice - interval unchanged.\n");
+        return;
+    }
+
+    emailService.UpdateReminderInterval(minutes.Value);
+    Console.WriteLine($"Reminder interval set to {minutes} minute(s). Takes effect from the next reminder check and is saved for next time you run the app.\n");
+}
+
+static int? PromptCustomIntervalMinutes()
+{
+    Console.Write("Enter custom interval in minutes: ");
+    var input = Console.ReadLine();
+    return int.TryParse(input, out var minutes) && minutes > 0 ? minutes : null;
 }
 
 static void SendTestNotify(ShiftStorageService storage, EmailService emailService, NotificationService notifier)
