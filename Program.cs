@@ -90,14 +90,14 @@ static void SendReminderIfDue(ShiftStorageService storage, EmailService emailSer
     if (now.ToTimeSpan() >= shift.Exit100.ToTimeSpan()) return;
 
     var body = BuildReminderBody(shift, storage, emailService);
-    notifier.Show($"Exit Time Reminder - {shift.Date}", body);
+    notifier.Show($"Time Logged Update - {shift.Date}", body);
     Console.WriteLine($"\n[Desktop notification sent at {DateTime.Now:h:mm:ss tt}]");
 
     if (emailService.IsConfigured)
     {
         try
         {
-            emailService.Send($"Exit Time Reminder - {shift.Date}", body);
+            emailService.Send($"Time Logged Update - {shift.Date}", body);
             Console.WriteLine($"[Reminder email sent at {DateTime.Now:h:mm:ss tt}]");
         }
         catch (Exception ex)
@@ -181,7 +181,7 @@ static void SendTestNotify(ShiftStorageService storage, EmailService emailServic
     }
 
     var body = BuildReminderBody(shift, storage, emailService);
-    notifier.Show($"Exit Time Reminder - {shift.Date}", body);
+    notifier.Show($"Time Logged Update - {shift.Date}", body);
     Console.WriteLine("\nTest notification sent with today's real shift data:");
     Console.WriteLine(body + "\n");
 }

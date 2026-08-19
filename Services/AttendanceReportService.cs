@@ -62,6 +62,13 @@ public static class AttendanceReportService
                 var spent = TimeOnly.FromDateTime(now).ToTimeSpan() - r.EntryTime.ToTimeSpan();
                 if (spent > TimeSpan.Zero) logged += spent;
             }
+            else
+            {
+                // Past office day with no actual exit ever logged - fall back to the day's
+                // target duration so it isn't silently dropped from the weekly total.
+                logged += r.Exit100.ToTimeSpan() - r.EntryTime.ToTimeSpan();
+                accountedDays++;
+            }
         }
 
         var pending = weeklyTarget - logged;
