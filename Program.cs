@@ -10,7 +10,9 @@ PrintHeader();
 Console.WriteLine(emailService.IsConfigured
     ? $"Email reminders: ON (every {emailService.ReminderIntervalMinutes} min)"
     : "Email reminders: OFF - add your Outlook app password to appsettings.json to enable later.");
-Console.WriteLine($"Desktop notifications: ON (every {emailService.ReminderIntervalMinutes} min)");
+Console.WriteLine(notifier.IsDesktopNotification
+    ? $"Desktop notifications: ON via {notifier.Description} (every {emailService.ReminderIntervalMinutes} min)"
+    : $"Desktop notifications: {notifier.Description} (every {emailService.ReminderIntervalMinutes} min)");
 Console.WriteLine($"Office attendance target: {emailService.RequiredOfficeDaysPerWeek} day(s)/week\n");
 
 StartReminderLoop(storage, emailService, notifier);

@@ -1,65 +1,48 @@
-using System.Drawing;
-using System.Windows.Forms;
+using HoursLoggedNotifier.Services.Notifications;
 
 namespace HoursLoggedNotifier.Services;
 
+/// <summary>
+/// Picks whichever notifier suits the current OS and forwards to it, so callers
+/// never have to care which platform they're on.
+/// </summary>
 public class NotificationService : IDisposable
 {
-    private readonly ManualResetEventSlim _ready = new(false);
-    private Form? _pumpForm;
-    private NotifyIcon? _icon;
+    private readonly IPlatformNotifier _notifier;
 
     public NotificationService()
     {
-        var uiThread = new Thread(RunMessagePump) { IsBackground = true };
-        uiThread.SetApartmentState(ApartmentState.STA);
-        uiThread.Start();
-        _ready.Wait();
+        _notifier = CreateNotifier();
     }
 
-    private void RunMessagePump()
-    {
-        try
-        {
-            _pumpForm = new Form { ShowInTaskbar = false, Opacity = 0, WindowState = FormWindowState.Minimized };
-            _ = _pumpForm.Handle; // force native window creation so Invoke works immediately
-            _pumpForm.Load += (_, _) => _pumpForm.Hide();
+    /// <summary>Short label for the startup banner, e.g. "tray balloon".</summary>
+    public string Description => _notifier.Description;
 
-            _icon = new NotifyIcon
-            {
-                Icon = SystemIcons.Information,
-                Text = "Hours Logged Notifier",
-                Visible = true
-            };
-        }
-        catch
+    /// <summary>False when reminders can only be printed to the console.</summary>
+    public bool IsDesktopNotification => _notifier.IsDesktopNotification;
+
+    private static IPlatformNotifier CreateNotifier()
+    {
+#if WINDOWS_TRAY
+        if (OperatingSystem.IsWindows())
         {
-            _pumpForm = null;
-            _icon = null;
+            var tray = new WindowsTrayNotifier();
+            if (tray.IsDesktopNotification) return tray;
+            tray.Dispose();
+            return new ConsoleNotifier("console output - the Windows tray icon could not be created");
         }
-        finally
+#endif
+
+        if (OperatingSystem.IsLinux())
         {
-            _ready.Set();
+            if (LinuxNotifier.IsAvailable()) return new LinuxNotifier();
+            return new ConsoleNotifier("console output - install libnotify (notify-send) for desktop popups");
         }
 
-        if (_pumpForm is not null)
-            Application.Run();
+        return new ConsoleNotifier($"console output - no desktop popups on {(OperatingSystem.IsMacOS() ? "macOS" : "this OS")} yet");
     }
 
-    public void Show(string title, string message)
-    {
-        if (_pumpForm is null || _icon is null) return;
-        _pumpForm.Invoke(new Action(() => _icon.ShowBalloonTip(10000, title, message, ToolTipIcon.Info)));
-    }
+    public void Show(string title, string message) => _notifier.Show(title, message);
 
-    public void Dispose()
-    {
-        if (_pumpForm is null || _icon is null) return;
-        _pumpForm.Invoke(new Action(() =>
-        {
-            _icon.Visible = false;
-            _icon.Dispose();
-            Application.ExitThread();
-        }));
-    }
+    public void Dispose() => _notifier.Dispose();
 }

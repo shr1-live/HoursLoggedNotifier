@@ -2,7 +2,7 @@
 
 A small tool that tracks your office/WFH shift hours and pops up a desktop reminder before your exit time.
 
-No installation needed. No .NET needed. Just the folder below.
+On Windows: no installation needed, no .NET needed — just the folder below. On Linux: one build step, see "On Linux" below.
 
 ## 1. What to copy
 
@@ -15,6 +15,18 @@ publish-standalone/
 ```
 
 Keep both files in the same folder. The app creates a `shifts.json` file next to itself the first time you log a day — that's where your history is saved.
+
+### On Linux
+
+The standalone `.exe` above is Windows-only, and a Linux build has to be made on Linux. Clone the repo, then:
+
+```
+git clone <repo-url> hours-logged-notifier
+cd hours-logged-notifier
+./start.sh
+```
+
+`start.sh` publishes the app the first time it runs (needs the .NET 10 SDK) and launches it. For popup reminders, install notify-send if it is missing: `sudo apt install libnotify-bin` on Debian/Ubuntu, `sudo dnf install libnotify` on Fedora. Without it everything still works, but reminders print in the terminal window instead of popping up.
 
 ## 2. Running it
 
@@ -52,11 +64,11 @@ Other things you can type at the `>` prompt instead of pasting:
 
 ## 4. Desktop reminders
 
-These work automatically, no setup needed. Every 5 minutes (configurable — see below) it checks: if today's shift isn't finished yet, it shows a Windows notification with time remaining.
+These work automatically, no setup needed. Every 5 minutes (configurable — see below) it checks: if today's shift isn't finished yet, it shows a desktop notification with time remaining (a tray balloon on Windows, notify-send on Linux).
 
 ## 5. Optional settings
 
-Open `appsettings.json` in Notepad if you want to change anything. All fields are optional to touch:
+Open `appsettings.json` in a text editor if you want to change anything. All fields are optional to touch:
 
 | Setting                    | What it means                                       | Default |
 |-----------------------------|------------------------------------------------------|---------|
@@ -71,5 +83,5 @@ Off by default — the app works fully without it. To turn it on later, an Outlo
 ## 7. Nothing to worry about
 
 - No internet access required unless email is turned on.
-- No install, no admin rights needed — the `.exe` runs standalone.
-- All data (`shifts.json`) stays local in the same folder as the `.exe`.
+- No install, no admin rights needed — the `.exe` runs standalone (on Linux you only need the .NET SDK to build it once).
+- All data (`shifts.json`) stays local in the same folder as the app.
