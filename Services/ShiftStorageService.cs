@@ -24,12 +24,14 @@ public class ShiftStorageService
     public void Save(ShiftRecord shift)
     {
         var all = LoadAll();
-        all.RemoveAll(s => s.Date == shift.Date);
+        all.RemoveAll(s => s.FullDate == shift.FullDate || s.Date == shift.Date);
         all.Add(shift);
 
         var json = JsonSerializer.Serialize(all, new JsonSerializerOptions { WriteIndented = true });
         File.WriteAllText(_filePath, json);
     }
 
-    public ShiftRecord? GetByDate(string date) => LoadAll().FirstOrDefault(s => s.Date == date);
+    public ShiftRecord? GetByDate(DateOnly date) => LoadAll().FirstOrDefault(s => s.FullDate == date);
+
+    public ShiftRecord? GetToday() => GetByDate(DateOnly.FromDateTime(DateTime.Now));
 }

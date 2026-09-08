@@ -114,6 +114,13 @@ public static class AttendanceParser
             return false;
         }
 
+        if (!ShiftCalculationService.TryResolveFullDate(date, out _))
+        {
+            result = new ParsedAttendance();
+            error = $"Couldn't understand the date '{date}'.\n{ExpectedFormatHint}";
+            return false;
+        }
+
         result = new ParsedAttendance
         {
             Date = date,

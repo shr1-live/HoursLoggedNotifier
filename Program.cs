@@ -1,4 +1,3 @@
-using System.Globalization;
 using HoursLoggedNotifier.Models;
 using HoursLoggedNotifier.Services;
 
@@ -82,8 +81,7 @@ static void StartReminderLoop(ShiftStorageService storage, EmailService emailSer
 
 static void SendReminderIfDue(ShiftStorageService storage, EmailService emailService, NotificationService notifier)
 {
-    var today = DateTime.Now.ToString("d MMM", CultureInfo.InvariantCulture);
-    var shift = storage.GetByDate(today);
+    var shift = storage.GetToday();
     if (shift is null || shift.IsWfh) return;
 
     var now = TimeOnly.FromDateTime(DateTime.Now);
@@ -170,8 +168,7 @@ static int? PromptCustomIntervalMinutes()
 
 static void SendTestNotify(ShiftStorageService storage, EmailService emailService, NotificationService notifier)
 {
-    var today = DateTime.Now.ToString("d MMM", CultureInfo.InvariantCulture);
-    var shift = storage.GetByDate(today);
+    var shift = storage.GetToday();
 
     if (shift is null || shift.IsWfh)
     {
@@ -267,8 +264,9 @@ static List<string> ReadPasteBlock(string firstLine)
 
 static void LogWfhDay(ShiftStorageService storage, EmailService emailService)
 {
-    var todayDisplay = DateTime.Now.ToString("d MMM", CultureInfo.InvariantCulture);
-    var existing = storage.GetByDate(todayDisplay);
+    var todayDate = ShiftCalculationService.Today;
+    var todayDisplay = ShiftCalculationService.FormatDisplayDate(todayDate);
+    var existing = storage.GetToday();
 
     if (existing is not null)
     {
@@ -279,7 +277,7 @@ static void LogWfhDay(ShiftStorageService storage, EmailService emailService)
     storage.Save(new ShiftRecord
     {
         Date = todayDisplay,
-        FullDate = DateOnly.FromDateTime(DateTime.Now),
+        FullDate = todayDate,
         IsWfh = true
     });
 
@@ -301,13 +299,12 @@ static void ViewWeek(ShiftStorageService storage, EmailService emailService)
 
 static void ViewToday(ShiftStorageService storage, EmailService emailService)
 {
-    var today = DateTime.Now.ToString("d MMM", CultureInfo.InvariantCulture);
-    var shift = storage.GetByDate(today);
+    var shift = storage.GetToday();
 
     Console.WriteLine();
     if (shift is null)
     {
-        Console.WriteLine($"No shift recorded yet for today ({today}).\n");
+        Console.WriteLine($"No shift recorded yet for today ({ShiftCalculationService.FormatDisplayDate(ShiftCalculationService.Today)}).\n");
         return;
     }
 
