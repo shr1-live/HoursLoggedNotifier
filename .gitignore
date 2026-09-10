@@ -4,3 +4,6 @@ publish/
 publish-standalone/
 shifts.json
 appsettings.json
+
+# local agent/tooling session state - not part of the project
+.omo/
