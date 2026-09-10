@@ -35,6 +35,57 @@ public static class AttendanceReportService
 
     private const int WorkdaysPerWeek = 5;
 
+    /// <summary>
+    /// Hours counted for one office day: the real span once an exit is logged,
+    /// the time elapsed so far for today, and the full shift for a past day
+    /// whose exit was never entered.
+    /// </summary>
+    private static TimeSpan GetLoggedDuration(ShiftRecord record, DateTime now)
+    {
+        if (record.ActualExitTime.HasValue)
+            return record.ActualExitTime.Value.ToTimeSpan() - record.EntryTime.ToTimeSpan();
+
+        if (record.FullDate == DateOnly.FromDateTime(now))
+        {
+            var spent = TimeOnly.FromDateTime(now).ToTimeSpan() - record.EntryTime.ToTimeSpan();
+            return spent > TimeSpan.Zero ? spent : TimeSpan.Zero;
+        }
+
+        return record.Exit100.ToTimeSpan() - record.EntryTime.ToTimeSpan();
+    }
+
+    /// <summary>
+    /// Running total of time actually spent in office this week, today included.
+    /// Unlike the weekly hours line this counts office time only - WFH days are
+    /// credited against the target there, but no office hours are logged on them.
+    /// </summary>
+    public static string FormatOfficeHoursSummary(List<ShiftRecord> all)
+    {
+        var now = DateTime.Now;
+        var today = DateOnly.FromDateTime(now);
+        var officeRecords = GetThisWeeksRecords(all).Where(r => !r.IsWfh).ToList();
+
+        if (officeRecords.Count == 0)
+            return "Office hours this week: none logged yet.";
+
+        var total = TimeSpan.Zero;
+        var todaySoFar = TimeSpan.Zero;
+
+        foreach (var record in officeRecords)
+        {
+            var logged = GetLoggedDuration(record, now);
+            total += logged;
+
+            if (record.FullDate == today && !record.ActualExitTime.HasValue)
+                todaySoFar = logged;
+        }
+
+        var line = $"Office hours this week: {ShiftCalculationService.FormatDuration(total)} across {officeRecords.Count} office day(s)";
+        return todaySoFar > TimeSpan.Zero
+            ? $"{line} (today {ShiftCalculationService.FormatDuration(todaySoFar)} so far)."
+            : $"{line}.";
+    }
+
     public static string FormatWeeklyHoursSummary(List<ShiftRecord> all, TimeSpan dailyGoal)
     {
         var weekRecords = GetThisWeeksRecords(all);
@@ -47,28 +98,20 @@ public static class AttendanceReportService
 
         foreach (var r in weekRecords)
         {
-            if (r.ActualExitTime.HasValue)
-            {
-                logged += r.ActualExitTime.Value.ToTimeSpan() - r.EntryTime.ToTimeSpan();
-                accountedDays++;
-            }
-            else if (r.IsWfh)
+            if (r.IsWfh)
             {
                 logged += dailyGoal;
                 accountedDays++;
+                continue;
             }
-            else if (r.FullDate == today)
-            {
-                var spent = TimeOnly.FromDateTime(now).ToTimeSpan() - r.EntryTime.ToTimeSpan();
-                if (spent > TimeSpan.Zero) logged += spent;
-            }
-            else
-            {
-                // Past office day with no actual exit ever logged - fall back to the day's
-                // target duration so it isn't silently dropped from the weekly total.
-                logged += r.Exit100.ToTimeSpan() - r.EntryTime.ToTimeSpan();
+
+            // A past office day with no exit logged falls back to the day's target
+            // duration (see GetLoggedDuration) so it isn't silently dropped here.
+            logged += GetLoggedDuration(r, now);
+
+            // Today is still running, so it doesn't count as an accounted-for day yet.
+            if (r.ActualExitTime.HasValue || r.FullDate != today)
                 accountedDays++;
-            }
         }
 
         var pending = weeklyTarget - logged;

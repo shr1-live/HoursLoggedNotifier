@@ -123,8 +123,10 @@ static string BuildReminderBody(ShiftRecord shift, ShiftStorageService storage, 
         ? $"Time left (100%): {ShiftCalculationService.FormatDuration(left100)} (exit at {shift.Exit100:h:mm:ss tt})"
         : "100% exit time has passed.");
 
-    lines.Add(AttendanceReportService.FormatWeekSummary(storage.LoadAll(), emailService.RequiredOfficeDaysPerWeek));
-    lines.Add(AttendanceReportService.FormatWeeklyHoursSummary(storage.LoadAll(), emailService.DailyHourGoal));
+    var all = storage.LoadAll();
+    lines.Add(AttendanceReportService.FormatOfficeHoursSummary(all));
+    lines.Add(AttendanceReportService.FormatWeekSummary(all, emailService.RequiredOfficeDaysPerWeek));
+    lines.Add(AttendanceReportService.FormatWeeklyHoursSummary(all, emailService.DailyHourGoal));
 
     return string.Join("\n", lines);
 }
@@ -294,6 +296,7 @@ static void ViewWeek(ShiftStorageService storage, EmailService emailService)
     var all = storage.LoadAll();
     Console.WriteLine();
     Console.WriteLine(AttendanceReportService.FormatDayWiseLog(all));
+    Console.WriteLine(AttendanceReportService.FormatOfficeHoursSummary(all));
     Console.WriteLine(AttendanceReportService.FormatWeekSummary(all, emailService.RequiredOfficeDaysPerWeek));
     Console.WriteLine(AttendanceReportService.FormatWeeklyHoursSummary(all, emailService.DailyHourGoal));
     Console.WriteLine();
@@ -387,7 +390,9 @@ static void PrintShiftSummary(ShiftRecord shift, ShiftStorageService storage, Em
     }
 
     Console.WriteLine("----------------------------------------");
-    Console.WriteLine(AttendanceReportService.FormatWeekSummary(storage.LoadAll(), emailService.RequiredOfficeDaysPerWeek));
-    Console.WriteLine(AttendanceReportService.FormatWeeklyHoursSummary(storage.LoadAll(), emailService.DailyHourGoal));
+    var all = storage.LoadAll();
+    Console.WriteLine(AttendanceReportService.FormatOfficeHoursSummary(all));
+    Console.WriteLine(AttendanceReportService.FormatWeekSummary(all, emailService.RequiredOfficeDaysPerWeek));
+    Console.WriteLine(AttendanceReportService.FormatWeeklyHoursSummary(all, emailService.DailyHourGoal));
     Console.WriteLine("========================================\n");
 }
