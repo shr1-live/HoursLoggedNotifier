@@ -86,12 +86,17 @@ static void SendReminderIfDue(ShiftStorageService storage, EmailService emailSer
     var shift = storage.GetToday();
     if (shift is null || shift.IsWfh) return;
 
+    var spent = ShiftCalculationService.GetTimeSpent(shift);
+
+    // The "you're done" notice takes this slot, so the two never fire together.
+    if (AnnounceCompletionIfDue(shift, spent, emailService, notifier)) return;
+
     var now = TimeOnly.FromDateTime(DateTime.Now);
     if (now.ToTimeSpan() >= shift.Exit100.ToTimeSpan()) return;
 
     var body = BuildReminderBody(shift, storage, emailService);
     notifier.Show($"Time Logged Update - {shift.Date}", body);
-    Console.WriteLine($"\n[Desktop notification sent at {DateTime.Now:h:mm:ss tt}]");
+    Console.WriteLine($"\n[Desktop notification sent at {DateTime.Now:h:mm:ss tt}] - {ShiftCalculationService.FormatDuration(spent)} completed");
 
     if (emailService.IsConfigured)
     {
@@ -105,6 +110,53 @@ static void SendReminderIfDue(ShiftStorageService storage, EmailService emailSer
             Console.WriteLine($"[Failed to send reminder email: {ex.Message}]");
         }
     }
+}
+
+/// <summary>
+/// Fires once a day, the first time the 95% exit time or the daily hour goal is reached.
+/// Returns true when it sent something, so the caller skips the ordinary reminder.
+/// </summary>
+static bool AnnounceCompletionIfDue(ShiftRecord shift, TimeSpan spent, EmailService emailService, NotificationService notifier)
+{
+    if (CompletionNotice.AnnouncedFor == shift.FullDate) return false;
+
+    var now = TimeOnly.FromDateTime(DateTime.Now);
+    var reached95 = now.ToTimeSpan() >= shift.Exit95.ToTimeSpan();
+    var reachedGoal = spent >= emailService.DailyHourGoal;
+
+    if (!reached95 && !reachedGoal) return false;
+
+    CompletionNotice.AnnouncedFor = shift.FullDate;
+
+    var reason = reached95
+        ? $"95% of your shift is done (exit time {shift.Exit95:h:mm:ss tt})."
+        : $"You've hit the {ShiftCalculationService.FormatDuration(emailService.DailyHourGoal)} daily goal.";
+
+    var body = string.Join("\n", new[]
+    {
+        $"Hours completed: {ShiftCalculationService.FormatDuration(spent)}",
+        reason,
+        $"Full 100% exit time is {shift.Exit100:h:mm:ss tt}."
+    });
+
+    notifier.Show($"Hours Completed - {shift.Date}", body);
+    Console.WriteLine($"\n[Completion notification sent at {DateTime.Now:h:mm:ss tt}] - {ShiftCalculationService.FormatDuration(spent)} completed");
+    Console.WriteLine(reason);
+
+    if (emailService.IsConfigured)
+    {
+        try
+        {
+            emailService.Send($"Hours Completed - {shift.Date}", body);
+            Console.WriteLine($"[Completion email sent at {DateTime.Now:h:mm:ss tt}]");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[Failed to send completion email: {ex.Message}]");
+        }
+    }
+
+    return true;
 }
 
 static string BuildReminderBody(ShiftRecord shift, ShiftStorageService storage, EmailService emailService)
@@ -395,4 +447,10 @@ static void PrintShiftSummary(ShiftRecord shift, ShiftStorageService storage, Em
     Console.WriteLine(AttendanceReportService.FormatWeekSummary(all, emailService.RequiredOfficeDaysPerWeek));
     Console.WriteLine(AttendanceReportService.FormatWeeklyHoursSummary(all, emailService.DailyHourGoal));
     Console.WriteLine("========================================\n");
+}
+
+/// <summary>Remembers the day the completion notice went out, so it only fires once.</summary>
+static class CompletionNotice
+{
+    public static DateOnly? AnnouncedFor { get; set; }
 }
