@@ -8,6 +8,16 @@ rem has changed - and it stops a stale publish\ folder silently shadowing edits.
 where dotnet >nul 2>&1
 if errorlevel 1 goto nosdk
 
+rem A running instance holds publish\HoursLoggedNotifier.dll open, so the copy
+rem would fail after ten noisy retries. Skip the build and say so plainly.
+tasklist /FI "IMAGENAME eq HoursLoggedNotifier.exe" 2>nul | find /I "HoursLoggedNotifier.exe" >nul
+if not errorlevel 1 (
+  echo Another Hours Logged Notifier is already running, so this copy cannot be updated.
+  echo Close that window first if you want the latest changes.
+  echo.
+  goto run
+)
+
 echo Checking for updates...
 dotnet publish -c Release -o publish --nologo -v quiet
 if errorlevel 1 (

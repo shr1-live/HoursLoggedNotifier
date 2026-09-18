@@ -8,7 +8,11 @@ cd "$(dirname "$0")" || exit 1
 # Publish every launch so code changes always reach the running app. The build
 # is incremental, so this is quick when nothing changed - and it stops a stale
 # publish/ directory silently shadowing edits.
-if command -v dotnet >/dev/null 2>&1; then
+if command -v dotnet >/dev/null 2>&1 && pgrep -x HoursLoggedNotifier >/dev/null 2>&1; then
+  echo "Another Hours Logged Notifier is already running, so this copy cannot be updated."
+  echo "Close it first if you want the latest changes."
+  echo
+elif command -v dotnet >/dev/null 2>&1; then
   echo "Checking for updates..."
   if ! dotnet publish -c Release -o publish --nologo -v quiet; then
     if [ -x ./publish/HoursLoggedNotifier ]; then
