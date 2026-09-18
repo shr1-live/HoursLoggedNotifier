@@ -20,7 +20,7 @@ StartReminderLoop(storage, emailService, notifier);
 var running = true;
 while (running)
 {
-    Console.WriteLine("Paste your shift + biometric block below (or type: today / history / week / wfh / interval / testemail / testnotify / exit)");
+    Console.WriteLine("Paste your shift + biometric block below (or type: ui / today / history / week / wfh / interval / testemail / testnotify / exit)");
     Console.Write("> ");
     var firstLine = Console.ReadLine();
     if (firstLine is null) break;
@@ -54,6 +54,11 @@ while (running)
             continue;
         case "testnotify":
             SendTestNotify(storage, emailService, notifier);
+            continue;
+        case "ui":
+        case "dashboard":
+        case "live":
+            ShowDashboard(storage, emailService);
             continue;
         case "exit":
         case "4":
@@ -96,7 +101,9 @@ static void SendReminderIfDue(ShiftStorageService storage, EmailService emailSer
 
     var body = BuildReminderBody(shift, storage, emailService);
     notifier.Show($"Time Logged Update - {shift.Date}", body);
-    Console.WriteLine($"\n[Desktop notification sent at {DateTime.Now:h:mm:ss tt}] - {ShiftCalculationService.FormatDuration(spent)} completed");
+    // The live dashboard owns the screen while it's open, so don't scribble over it.
+    if (!Dashboard.IsActive)
+        Console.WriteLine($"\n[Desktop notification sent at {DateTime.Now:h:mm:ss tt}] - {ShiftCalculationService.FormatDuration(spent)} logged");
 
     if (emailService.IsConfigured)
     {
@@ -447,6 +454,132 @@ static void PrintShiftSummary(ShiftRecord shift, ShiftStorageService storage, Em
     Console.WriteLine(AttendanceReportService.FormatWeekSummary(all, emailService.RequiredOfficeDaysPerWeek));
     Console.WriteLine(AttendanceReportService.FormatWeeklyHoursSummary(all, emailService.DailyHourGoal));
     Console.WriteLine("========================================\n");
+}
+
+/// <summary>
+/// A live status panel drawn in the existing console window - no extra process,
+/// no new dependency, and nothing retained between redraws.
+/// Repaints once a second until any key is pressed.
+/// </summary>
+static void ShowDashboard(ShiftStorageService storage, EmailService emailService)
+{
+    var shift = storage.GetToday();
+
+    if (shift is null)
+    {
+        Console.WriteLine($"\nNo shift recorded yet for today ({ShiftCalculationService.FormatDisplayDate(ShiftCalculationService.Today)}) - paste your block first.\n");
+        return;
+    }
+
+    if (shift.IsWfh)
+    {
+        Console.WriteLine($"\n{shift.Date} is logged as WFH, so there is no running clock to show.\n");
+        return;
+    }
+
+    // A redirected console has no cursor to move and no key to read, so the
+    // panel would scroll forever. Print one snapshot instead.
+    if (Console.IsOutputRedirected || Console.IsInputRedirected)
+    {
+        foreach (var line in BuildDashboardLines(shift, storage, emailService))
+            Console.WriteLine(line);
+        return;
+    }
+
+    Dashboard.IsActive = true;
+    var previousCursor = true;
+    try
+    {
+        previousCursor = Console.CursorVisible;
+        Console.CursorVisible = false;
+    }
+    catch (PlatformNotSupportedException) { /* not all terminals report this */ }
+
+    try
+    {
+        Console.Clear();
+        var painted = 0;
+
+        while (true)
+        {
+            var lines = BuildDashboardLines(shift, storage, emailService);
+            Console.SetCursorPosition(0, 0);
+
+            var width = Math.Max(Console.WindowWidth - 1, 20);
+            foreach (var line in lines)
+            {
+                var text = line.Length > width ? line[..width] : line;
+                Console.WriteLine(text.PadRight(width));
+            }
+
+            // Wipe anything left over from a taller previous frame.
+            for (var i = lines.Count; i < painted; i++)
+                Console.WriteLine(new string(' ', width));
+
+            painted = lines.Count;
+
+            if (Console.KeyAvailable)
+            {
+                Console.ReadKey(intercept: true);
+                break;
+            }
+
+            Thread.Sleep(1000);
+        }
+    }
+    finally
+    {
+        Dashboard.IsActive = false;
+        try { Console.CursorVisible = previousCursor; }
+        catch (PlatformNotSupportedException) { }
+        Console.Clear();
+    }
+}
+
+/// <summary>Builds the panel as plain text so it can be painted or printed once.</summary>
+static List<string> BuildDashboardLines(ShiftRecord shift, ShiftStorageService storage, EmailService emailService)
+{
+    var spent = ShiftCalculationService.GetTimeSpent(shift);
+    var left95 = ShiftCalculationService.GetTimeLeft(shift, shift.Exit95);
+    var left100 = ShiftCalculationService.GetTimeLeft(shift, shift.Exit100);
+
+    var total = shift.Exit100.ToTimeSpan() - shift.EntryTime.ToTimeSpan();
+    if (total <= TimeSpan.Zero) total = TimeSpan.FromHours(9);
+
+    var fraction = Math.Clamp(spent.TotalSeconds / total.TotalSeconds, 0d, 1d);
+    var all = storage.LoadAll();
+
+    return new List<string>
+    {
+        "============================================",
+        $"   HOURS LOGGED - {shift.Date}   {DateTime.Now:h:mm:ss tt}",
+        "============================================",
+        $" Logged so far   {ShiftCalculationService.FormatDuration(spent)}",
+        $" {ProgressBar(fraction)} {fraction * 100:0}%",
+        "",
+        $" Entry           {shift.EntryTime:h:mm:ss tt}" + (string.IsNullOrEmpty(shift.Location) ? "" : $"  ({shift.Location})"),
+        $" Exit (95%)      {shift.Exit95:h:mm:ss tt}   " + (left95 > TimeSpan.Zero ? $"in {ShiftCalculationService.FormatDuration(left95)}" : "reached"),
+        $" Exit (100%)     {shift.Exit100:h:mm:ss tt}   " + (left100 > TimeSpan.Zero ? $"in {ShiftCalculationService.FormatDuration(left100)}" : "reached"),
+        $" Entry status    {ShiftCalculationService.GetEntryStatus(shift)}",
+        "--------------------------------------------",
+        " " + AttendanceReportService.FormatOfficeHoursSummary(all),
+        " " + AttendanceReportService.FormatWeekSummary(all, emailService.RequiredOfficeDaysPerWeek),
+        " " + AttendanceReportService.FormatWeeklyHoursSummary(all, emailService.DailyHourGoal),
+        "============================================",
+        " Press any key to return to the prompt."
+    };
+}
+
+static string ProgressBar(double fraction, int width = 30)
+{
+    var filled = (int)Math.Round(fraction * width);
+    return "[" + new string('#', filled) + new string('.', width - filled) + "]";
+}
+
+/// <summary>Lets the reminder loop know the dashboard owns the screen.</summary>
+static class Dashboard
+{
+    public static volatile bool IsActive;
 }
 
 /// <summary>Remembers the day the completion notice went out, so it only fires once.</summary>
