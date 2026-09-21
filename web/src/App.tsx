@@ -6,6 +6,19 @@ import {
   WeeklyTrend,
 } from './components/Analytics';
 import { createPortal } from 'react-dom';
+import {
+  CircleGauge,
+  Download,
+  LogOut,
+  Maximize2,
+  Moon,
+  PanelBottom,
+  PanelLeft,
+  Sun,
+  SunMoon,
+  Upload,
+} from 'lucide-react';
+import { MotionCard, MotionSection } from './components/Motion';
 import { EditRow } from './components/EditRow';
 import { FocusView } from './components/FocusView';
 import { HoursMinutesInput } from './components/HoursMinutesInput';
@@ -329,6 +342,7 @@ export default function App() {
                 className={theme === option ? 'active' : ''}
                 onClick={() => setTheme(option)}
               >
+                {option === 'light' ? <Sun size={15} /> : option === 'dark' ? <Moon size={15} /> : <SunMoon size={15} />}
                 {option === 'light' ? 'Light' : option === 'dark' ? 'Dark' : 'Auto'}
               </button>
             ))}
@@ -343,10 +357,10 @@ export default function App() {
               )
             }
           >
-            Focus window
+            <Maximize2 size={15} /> Focus window
           </button>
           <button onClick={() => void openMiniWidget()}>
-            {pipSupported() ? 'Mini widget' : 'Mini window'}
+            <CircleGauge size={15} /> {pipSupported() ? 'Mini widget' : 'Mini window'}
           </button>
           <button
             onClick={() =>
@@ -358,7 +372,7 @@ export default function App() {
               })
             }
           >
-            Bar widget
+            <PanelBottom size={15} /> Bar widget
           </button>
           <button
             onClick={() =>
@@ -368,15 +382,19 @@ export default function App() {
               })
             }
           >
-            Vertical bar
+            <PanelLeft size={15} /> Vertical bar
           </button>
           {permission !== 'granted' && permission !== 'unsupported' && (
             <button onClick={() => void requestNotificationPermission().then(setPermission)}>
               Enable alerts
             </button>
           )}
-          <button onClick={exportJson}>Export shifts.json</button>
-          <button onClick={() => fileInput.current?.click()}>Import</button>
+          <button onClick={exportJson}>
+            <Download size={15} /> Export
+          </button>
+          <button onClick={() => fileInput.current?.click()}>
+            <Upload size={15} /> Import
+          </button>
           <input
             ref={fileInput}
             type="file"
@@ -416,8 +434,8 @@ export default function App() {
         </div>
       )}
 
-      <section className="grid">
-        <article className="card centre">
+      <MotionSection className="grid">
+        <MotionCard className="card centre" index={0}>
           <h2>Today</h2>
           {today ? (
             <>
@@ -486,7 +504,7 @@ export default function App() {
               ) : (
                 <div className="row signoff">
                   <button className="primary" onClick={() => logOut()}>
-                    Log out now
+                    <LogOut size={15} /> Log out now
                   </button>
                   <input
                     type="time"
@@ -507,9 +525,9 @@ export default function App() {
           ) : (
             <p className="muted pad">No shift recorded today. Paste your block below.</p>
           )}
-        </article>
+        </MotionCard>
 
-        <article className="card centre">
+        <MotionCard className="card centre" index={0}>
           <h2>Office hours this week</h2>
           <RingGauge
             fraction={officeFraction}
@@ -532,10 +550,10 @@ export default function App() {
             {totals.officeDays} office day(s), {totals.wfhDays} WFH — target{' '}
             {settings.requiredOfficeDays}/week
           </p>
-        </article>
-      </section>
+        </MotionCard>
+      </MotionSection>
 
-      <section className="card">
+      <MotionSection className="card">
         <h2>This week</h2>
         <WeekChart days={days} goalHours={settings.dailyGoalHours} />
         <p className="muted small">
@@ -549,10 +567,10 @@ export default function App() {
             ` · ${formatDuration(totals.weeklyMark95Seconds - totals.totalSeconds)} to the 95% mark (${formatDuration(totals.weeklyMark95Seconds)})`
           )}
         </p>
-      </section>
+      </MotionSection>
 
-      <section className="two-up">
-        <article className="card">
+      <MotionSection className="two-up">
+        <MotionCard className="card">
           <h2>Log a shift</h2>
           <textarea
             value={paste}
@@ -583,9 +601,9 @@ export default function App() {
               Log these hours
             </button>
           </div>
-        </article>
+        </MotionCard>
 
-        <article className="card">
+        <MotionCard className="card">
           <h2>Settings</h2>
           <label>
             Office days required per week
@@ -640,10 +658,10 @@ export default function App() {
             Desktop reminders and notifications stay in the .NET app — this dashboard is the
             read-and-record side.
           </p>
-        </article>
-      </section>
+        </MotionCard>
+      </MotionSection>
 
-      <section className="card">
+      <MotionSection className="card">
         <h2>Analytics</h2>
         <StatGrid
           totals={overall}
@@ -651,28 +669,28 @@ export default function App() {
           streak={streak}
           goalHours={settings.dailyGoalHours}
         />
-      </section>
+      </MotionSection>
 
-      <section className="two-up">
-        <article className="card">
+      <MotionSection className="two-up">
+        <MotionCard className="card">
           <h2>Last 6 weeks</h2>
           <WeeklyTrend
             points={trend}
             targetHours={settings.dailyGoalHours * settings.workdaysPerWeek}
           />
-        </article>
-        <article className="card">
+        </MotionCard>
+        <MotionCard className="card">
           <h2>Average by weekday</h2>
           <DayOfWeekChart stats={dayStats} goalHours={settings.dailyGoalHours} />
-        </article>
-      </section>
+        </MotionCard>
+      </MotionSection>
 
-      <section className="card">
+      <MotionSection className="card">
         <h2>Pace this week</h2>
         <PaceCard pace={pace} />
-      </section>
+      </MotionSection>
 
-      <section className="card">
+      <MotionSection className="card">
         <h2>History</h2>
         {records.length === 0 ? (
           <p className="muted">Nothing logged yet.</p>
@@ -744,7 +762,7 @@ export default function App() {
             </tbody>
           </table>
         )}
-      </section>
+      </MotionSection>
     </div>
   );
 }

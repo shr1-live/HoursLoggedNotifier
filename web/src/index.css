@@ -554,3 +554,19 @@ button, input, textarea { transition: background-color 0.18s ease, border-color 
   padding: 6px 8px;
   font-family: inherit;
 }
+
+/* Buttons now carry icons, so align them with their label. */
+button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  line-height: 1;
+}
+
+.stat-label { display: flex; align-items: center; gap: 5px; }
+.theme-switch button { gap: 5px; }
+
+/* Framer Motion owns the card lift now, so drop the CSS one to avoid
+   two transforms fighting over the same element. */
+.card:hover { transform: none; }
+.stat:hover { transform: none; }
