@@ -1,0 +1,20 @@
+# Cloudflare Pages does not read netlify.toml, so the security headers are
+# repeated here in the format it does read. Kept deliberately in step with
+# netlify.toml - changing one without the other leaves a host unprotected.
+/*
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'; frame-ancestors 'none'; upgrade-insecure-requests
+  X-Frame-Options: DENY
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: no-referrer
+  Permissions-Policy: accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=(), interest-cohort=()
+  Strict-Transport-Security: max-age=31536000; includeSubDomains
+  Cross-Origin-Opener-Policy: same-origin
+  Cross-Origin-Resource-Policy: same-origin
+
+# Asset filenames carry a content hash, so they can never go stale.
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# The entry point must revalidate, or a deploy never reaches returning users.
+/index.html
+  Cache-Control: no-cache
