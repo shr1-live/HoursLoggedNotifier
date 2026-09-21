@@ -20,7 +20,7 @@ StartReminderLoop(storage, emailService, notifier);
 var running = true;
 while (running)
 {
-    Console.WriteLine("Paste your shift + biometric block below (or type: ui / widget / today / history / week / wfh / interval / testemail / testnotify / exit)");
+    Console.WriteLine("Paste your shift + biometric block below (or type: ui / widget / bar / vbar / today / history / week / wfh / interval / testemail / testnotify / exit)");
     Console.Write("> ");
     var firstLine = Console.ReadLine();
     if (firstLine is null) break;
@@ -69,6 +69,13 @@ while (running)
         case "ring":
         case "float":
             ShowFloatingWidget(storage, emailService, notifier);
+            continue;
+        case "bar":
+            ShowFloatingBar(storage, emailService, notifier, vertical: false);
+            continue;
+        case "vbar":
+        case "line":
+            ShowFloatingBar(storage, emailService, notifier, vertical: true);
             continue;
         case "exit":
         case "4":
@@ -600,6 +607,19 @@ static void ShowFloatingWidget(ShiftStorageService storage, EmailService emailSe
 
     Console.WriteLine("\nThis platform has no floating widget. Showing the console panel instead.");
     ShowDashboard(storage, emailService, notifier);
+}
+
+/// <summary>Opens the thin always-on-top progress line.</summary>
+static void ShowFloatingBar(ShiftStorageService storage, EmailService emailService, NotificationService notifier, bool vertical)
+{
+    if (notifier.TryShowFloatingBar(() => BuildSnapshot(storage, emailService), vertical))
+    {
+        var shape = vertical ? "Vertical" : "Horizontal";
+        Console.WriteLine($"\n{shape} line opened - drag it anywhere, double-click it to close.\n");
+        return;
+    }
+
+    Console.WriteLine("\nThis platform has no floating line.\n");
 }
 
 /// <summary>

@@ -28,6 +28,7 @@
     <Compile Remove="Ui/WeekBarChart.cs" />
     <Compile Remove="Ui/LayeredWindow.cs" />
     <Compile Remove="Ui/FloatingRingWidget.cs" />
+    <Compile Remove="Ui/FloatingBarWidget.cs" />
   </ItemGroup>
 
 </Project>

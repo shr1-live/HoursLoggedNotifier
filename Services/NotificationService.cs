@@ -36,6 +36,10 @@ public class NotificationService : IDisposable
     public bool TryShowFloatingWidget(Func<DashboardSnapshot?> nextFrame) =>
         _notifier is IDashboardHost host && host.TryShowFloatingWidget(nextFrame);
 
+    /// <summary>Opens the thin floating progress line.</summary>
+    public bool TryShowFloatingBar(Func<DashboardSnapshot?> nextFrame, bool vertical) =>
+        _notifier is IDashboardHost host && host.TryShowFloatingBar(nextFrame, vertical);
+
     private static IPlatformNotifier CreateNotifier()
     {
 #if WINDOWS_TRAY

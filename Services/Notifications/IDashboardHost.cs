@@ -22,4 +22,7 @@ public interface IDashboardHost
     /// Returns false when this platform has no such thing.
     /// </summary>
     bool TryShowFloatingWidget(Func<DashboardSnapshot?> nextFrame);
+
+    /// <summary>Opens the thin floating progress line, vertical or horizontal.</summary>
+    bool TryShowFloatingBar(Func<DashboardSnapshot?> nextFrame, bool vertical);
 }
