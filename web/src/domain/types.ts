@@ -41,7 +41,7 @@ export const defaultSettings: Settings = {
   requiredOfficeDays: 3,
   wfhDaysPerWeek: 2,
   dailyGoalHours: 9,
-  defaultWfhHours: 9,
+  defaultWfhHours: 9.5,
   workdaysPerWeek: 5,
   alertThresholds: [50, 75, 95, 100],
   notifyOnThreshold: true,
