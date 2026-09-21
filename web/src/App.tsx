@@ -8,7 +8,7 @@ import {
 import { createPortal } from 'react-dom';
 import { FocusView } from './components/FocusView';
 import { HoursMinutesInput } from './components/HoursMinutesInput';
-import { MiniWidget } from './components/MiniWidget';
+import { AdaptiveWidget } from './components/AdaptiveWidget';
 import { RingGauge } from './components/RingGauge';
 import { WeekChart } from './components/WeekChart';
 import {
@@ -172,13 +172,13 @@ export default function App() {
   }
 
 
-  async function openMiniWidget() {
+  async function openMiniWidget(shape: { width: number; height: number } = { width: 240, height: 250 }) {
     if (pip) {
       pip.window.focus();
       return;
     }
 
-    const opened = await openPipContainer({ width: 240, height: 250 });
+    const opened = await openPipContainer(shape);
     if (opened) {
       // Clear our reference when the user closes the window.
       opened.window.addEventListener('pagehide', () => setPip(null));
@@ -191,7 +191,7 @@ export default function App() {
     window.open(
       '/?mini=1',
       'hours-logged-mini',
-      'width=250,height=280,menubar=no,toolbar=no,location=no,status=no',
+      `width=${shape.width},height=${shape.height + 30},menubar=no,toolbar=no,location=no,status=no`,
     );
   }
 
@@ -227,9 +227,10 @@ export default function App() {
   // that opened it without any message passing.
   if (isMini) {
     return (
-      <MiniWidget
+      <AdaptiveWidget
         fraction={today ? today.fraction : null}
         loggedSeconds={today ? today.spentSeconds : 0}
+        remainingSeconds={today ? today.left100Seconds : 0}
         officeFraction={officeFraction}
       />
     );
@@ -253,9 +254,10 @@ export default function App() {
           the same state rather than polling or posting messages. */}
       {pip
         && createPortal(
-          <MiniWidget
+          <AdaptiveWidget
             fraction={today ? today.fraction : null}
             loggedSeconds={today ? today.spentSeconds : 0}
+            remainingSeconds={today ? today.left100Seconds : 0}
             officeFraction={officeFraction}
           />,
           pip.container,
@@ -296,6 +298,9 @@ export default function App() {
           </button>
           <button onClick={() => void openMiniWidget()}>
             {pipSupported() ? 'Mini widget' : 'Mini window'}
+          </button>
+          <button onClick={() => void openMiniWidget({ width: 620, height: 74 })}>
+            Bar widget
           </button>
           {permission !== 'granted' && permission !== 'unsupported' && (
             <button onClick={() => void requestNotificationPermission().then(setPermission)}>
