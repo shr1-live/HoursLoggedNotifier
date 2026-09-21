@@ -35,6 +35,48 @@ public static class AttendanceReportService
 
     private const int WorkdaysPerWeek = 5;
 
+    /// <summary>The office-hours bar that matters: required office days x the daily goal.</summary>
+    public static TimeSpan GetOfficeHoursTarget(int requiredOfficeDays, TimeSpan dailyGoal) =>
+        TimeSpan.FromTicks(dailyGoal.Ticks * requiredOfficeDays);
+
+    /// <summary>Hours credited for a WFH day - the stored override, or the daily goal.</summary>
+    public static TimeSpan GetWfhCredit(ShiftRecord record, TimeSpan dailyGoal) =>
+        record.WfhHours.HasValue ? TimeSpan.FromHours(record.WfhHours.Value) : dailyGoal;
+
+    /// <summary>Time actually spent in the office this week, today included.</summary>
+    public static TimeSpan GetOfficeHoursThisWeek(List<ShiftRecord> all)
+    {
+        var now = DateTime.Now;
+        return GetThisWeeksRecords(all)
+            .Where(r => !r.IsWfh)
+            .Aggregate(TimeSpan.Zero, (sum, r) => sum + GetLoggedDuration(r, now));
+    }
+
+    /// <summary>
+    /// Office hours against the weekly office target, with the 95% mark called
+    /// out - that threshold is what actually gets checked, not the raw total.
+    /// </summary>
+    public static string FormatOfficeTargetSummary(List<ShiftRecord> all, int requiredOfficeDays, TimeSpan dailyGoal)
+    {
+        var logged = GetOfficeHoursThisWeek(all);
+        var target = GetOfficeHoursTarget(requiredOfficeDays, dailyGoal);
+        if (target <= TimeSpan.Zero) return "Office target: not configured.";
+
+        var mark95 = TimeSpan.FromTicks((long)(target.Ticks * 0.95));
+        var percent = logged.TotalSeconds / target.TotalSeconds * 100;
+
+        var line = $"Office target: {ShiftCalculationService.FormatDuration(logged)} / {ShiftCalculationService.FormatDuration(target)} ({percent:0}%)";
+
+        if (logged >= target)
+            return line + " - full target met.";
+
+        if (logged >= mark95)
+            return line + $" - past the 95% mark ({ShiftCalculationService.FormatDuration(mark95)}).";
+
+        var to95 = mark95 - logged;
+        return line + $" - {ShiftCalculationService.FormatDuration(to95)} to the 95% mark ({ShiftCalculationService.FormatDuration(mark95)}).";
+    }
+
     /// <summary>
     /// Hours counted for one office day: the real span once an exit is logged,
     /// the time elapsed so far for today, and the full shift for a past day
@@ -100,7 +142,7 @@ public static class AttendanceReportService
         {
             if (r.IsWfh)
             {
-                logged += dailyGoal;
+                logged += GetWfhCredit(r, dailyGoal);
                 accountedDays++;
                 continue;
             }
@@ -131,16 +173,48 @@ public static class AttendanceReportService
         return line + $" across {remainingDays} day(s) left (~{ShiftCalculationService.FormatDuration(perDay)}/day, or {wfhDaysNeeded} WFH day(s) at {ShiftCalculationService.FormatDuration(dailyGoal)} each).";
     }
 
-    public static string FormatDayWiseLog(List<ShiftRecord> all)
+    public static string FormatDayWiseLog(List<ShiftRecord> all, TimeSpan dailyGoal)
     {
         var weekRecords = GetThisWeeksRecords(all);
         if (weekRecords.Count == 0)
             return "No attendance logged yet this week.";
 
         var lines = weekRecords.Select(r => r.IsWfh
-            ? $"{r.Date}: WFH"
-            : $"{r.Date}: Office ({r.Location ?? "location unknown"}) - Entry {r.EntryTime:h:mm:ss tt}");
+            ? $"{r.Date}: WFH - {ShiftCalculationService.FormatDuration(GetWfhCredit(r, dailyGoal))}{(r.WfhHours.HasValue ? "" : " (default)")}"
+            : $"{r.Date}: Office ({r.Location ?? "location unknown"}) - Entry {r.EntryTime:h:mm:ss tt}, {ShiftCalculationService.FormatDuration(GetLoggedDuration(r, DateTime.Now))}");
 
         return string.Join("\n", lines);
+    }
+
+    /// <summary>One bar's worth of data for the week - used by the day comparison chart.</summary>
+    public sealed record DayLog(DateOnly Date, string Label, bool IsWfh, bool IsLogged, TimeSpan Hours, bool IsToday);
+
+    /// <summary>
+    /// Monday to Friday with hours per day, including days with nothing logged,
+    /// so the comparison always shows the shape of the whole week.
+    /// </summary>
+    public static List<DayLog> GetWeekBreakdown(List<ShiftRecord> all, TimeSpan dailyGoal)
+    {
+        var now = DateTime.Now;
+        var today = DateOnly.FromDateTime(now);
+        var (monday, _) = GetCurrentWorkWeek();
+        var week = GetThisWeeksRecords(all);
+
+        var days = new List<DayLog>(WorkdaysPerWeek);
+        for (var i = 0; i < WorkdaysPerWeek; i++)
+        {
+            var date = monday.AddDays(i);
+            var record = week.FirstOrDefault(r => r.FullDate == date);
+            var label = date.ToString("ddd");
+
+            if (record is null)
+                days.Add(new DayLog(date, label, false, false, TimeSpan.Zero, date == today));
+            else if (record.IsWfh)
+                days.Add(new DayLog(date, label, true, true, GetWfhCredit(record, dailyGoal), date == today));
+            else
+                days.Add(new DayLog(date, label, false, true, GetLoggedDuration(record, now), date == today));
+        }
+
+        return days;
     }
 }

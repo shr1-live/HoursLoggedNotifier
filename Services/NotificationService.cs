@@ -1,3 +1,4 @@
+using HoursLoggedNotifier.Models;
 using HoursLoggedNotifier.Services.Notifications;
 
 namespace HoursLoggedNotifier.Services;
@@ -20,6 +21,16 @@ public class NotificationService : IDisposable
 
     /// <summary>False when reminders can only be printed to the console.</summary>
     public bool IsDesktopNotification => _notifier.IsDesktopNotification;
+
+    /// <summary>True when this platform can show a real dashboard window.</summary>
+    public bool HasWindow => _notifier is IDashboardHost;
+
+    /// <summary>
+    /// Opens the dashboard window if the platform has one. Returns false so the
+    /// caller can fall back to the console panel.
+    /// </summary>
+    public bool TryShowDashboard(Func<DashboardSnapshot?> nextFrame) =>
+        _notifier is IDashboardHost host && host.TryShowDashboard(nextFrame);
 
     private static IPlatformNotifier CreateNotifier()
     {

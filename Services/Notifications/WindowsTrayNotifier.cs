@@ -1,5 +1,7 @@
 using System.Drawing;
 using System.Windows.Forms;
+using HoursLoggedNotifier.Models;
+using HoursLoggedNotifier.Ui;
 
 namespace HoursLoggedNotifier.Services.Notifications;
 
@@ -8,11 +10,13 @@ namespace HoursLoggedNotifier.Services.Notifications;
 /// message pump, so it runs one on a dedicated STA thread. Compiled only on
 /// Windows builds (see the csproj).
 /// </summary>
-public class WindowsTrayNotifier : IPlatformNotifier
+public class WindowsTrayNotifier : IPlatformNotifier, IDashboardHost
 {
     private readonly ManualResetEventSlim _ready = new(false);
     private Form? _pumpForm;
     private NotifyIcon? _icon;
+    private DashboardForm? _dashboard;
+    private Func<DashboardSnapshot?>? _nextFrame;
 
     public WindowsTrayNotifier()
     {
@@ -40,6 +44,9 @@ public class WindowsTrayNotifier : IPlatformNotifier
                 Text = "Hours Logged Notifier",
                 Visible = true
             };
+
+            // Double-clicking the tray icon is the quickest way back to the window.
+            _icon.DoubleClick += (_, _) => OpenDashboard();
         }
         catch
         {
@@ -61,11 +68,38 @@ public class WindowsTrayNotifier : IPlatformNotifier
         _pumpForm.Invoke(new Action(() => _icon.ShowBalloonTip(10000, title, message, ToolTipIcon.Info)));
     }
 
+    public bool TryShowDashboard(Func<DashboardSnapshot?> nextFrame)
+    {
+        if (_pumpForm is null) return false;
+
+        _nextFrame = nextFrame;
+        // Marshal onto the pump thread: WinForms controls may only be touched there.
+        _pumpForm.Invoke(new Action(OpenDashboard));
+        return true;
+    }
+
+    /// <summary>Opens the window, or brings the existing one forward. Pump thread only.</summary>
+    private void OpenDashboard()
+    {
+        if (_nextFrame is null) return;
+
+        if (_dashboard is null || _dashboard.IsDisposed)
+        {
+            _dashboard = new DashboardForm(_nextFrame);
+            _dashboard.FormClosed += (_, _) => _dashboard = null;
+            _dashboard.Show();
+        }
+
+        _dashboard.WindowState = FormWindowState.Normal;
+        _dashboard.Activate();
+    }
+
     public void Dispose()
     {
         if (_pumpForm is null || _icon is null) return;
         _pumpForm.Invoke(new Action(() =>
         {
+            _dashboard?.Close();
             _icon.Visible = false;
             _icon.Dispose();
             Application.ExitThread();

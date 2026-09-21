@@ -23,6 +23,9 @@
 
   <ItemGroup Condition="'$(OS)' != 'Windows_NT'">
     <Compile Remove="Services/Notifications/WindowsTrayNotifier.cs" />
+    <Compile Remove="Ui/DashboardForm.cs" />
+    <Compile Remove="Ui/RingGauge.cs" />
+    <Compile Remove="Ui/WeekBarChart.cs" />
   </ItemGroup>
 
 </Project>

@@ -25,7 +25,12 @@ while (running)
     var firstLine = Console.ReadLine();
     if (firstLine is null) break;
 
-    var command = firstLine.Trim().ToLowerInvariant();
+    var trimmed = firstLine.Trim();
+    // Commands may carry one argument, e.g. "wfh 7.5".
+    var spaceAt = trimmed.IndexOf(' ');
+    var command = (spaceAt < 0 ? trimmed : trimmed[..spaceAt]).ToLowerInvariant();
+    var argument = spaceAt < 0 ? null : trimmed[(spaceAt + 1)..].Trim();
+
     switch (command)
     {
         case "":
@@ -43,7 +48,7 @@ while (running)
             ViewWeek(storage, emailService);
             continue;
         case "wfh":
-            LogWfhDay(storage, emailService);
+            LogWfhDay(storage, emailService, argument);
             continue;
         case "interval":
         case "settime":
@@ -58,7 +63,7 @@ while (running)
         case "ui":
         case "dashboard":
         case "live":
-            ShowDashboard(storage, emailService);
+            ShowDashboard(storage, emailService, notifier);
             continue;
         case "exit":
         case "4":
@@ -184,6 +189,7 @@ static string BuildReminderBody(ShiftRecord shift, ShiftStorageService storage, 
 
     var all = storage.LoadAll();
     lines.Add(AttendanceReportService.FormatOfficeHoursSummary(all));
+    lines.Add(AttendanceReportService.FormatOfficeTargetSummary(all, emailService.RequiredOfficeDaysPerWeek, emailService.DailyHourGoal));
     lines.Add(AttendanceReportService.FormatWeekSummary(all, emailService.RequiredOfficeDaysPerWeek));
     lines.Add(AttendanceReportService.FormatWeeklyHoursSummary(all, emailService.DailyHourGoal));
 
@@ -325,28 +331,57 @@ static List<string> ReadPasteBlock(string firstLine)
     return lines;
 }
 
-static void LogWfhDay(ShiftStorageService storage, EmailService emailService)
+/// <summary>
+/// Logs today as WFH, or changes the hours on a WFH day already logged.
+/// "wfh" credits the daily goal; "wfh 7.5" credits 7.5 hours.
+/// </summary>
+static void LogWfhDay(ShiftStorageService storage, EmailService emailService, string? hoursArgument)
 {
     var todayDate = ShiftCalculationService.Today;
     var todayDisplay = ShiftCalculationService.FormatDisplayDate(todayDate);
     var existing = storage.GetToday();
 
-    if (existing is not null)
+    double? hours = null;
+    if (!string.IsNullOrWhiteSpace(hoursArgument))
     {
-        Console.WriteLine($"\n{todayDisplay} is already logged as {(existing.IsWfh ? "WFH" : "an office day")}.\n");
+        if (!double.TryParse(hoursArgument, System.Globalization.NumberStyles.Float,
+                System.Globalization.CultureInfo.InvariantCulture, out var parsed) || parsed <= 0 || parsed > 24)
+        {
+            Console.WriteLine($"\n'{hoursArgument}' isn't a number of hours between 0 and 24. Try: wfh 7.5\n");
+            return;
+        }
+        hours = parsed;
+    }
+
+    if (existing is not null && !existing.IsWfh)
+    {
+        Console.WriteLine($"\n{todayDisplay} is already logged as an office day.\n");
         return;
     }
 
-    storage.Save(new ShiftRecord
+    var record = existing ?? new ShiftRecord
     {
         Date = todayDisplay,
         FullDate = todayDate,
         IsWfh = true
-    });
+    };
 
-    Console.WriteLine($"\n{todayDisplay} logged as WFH.");
-    Console.WriteLine(AttendanceReportService.FormatWeekSummary(storage.LoadAll(), emailService.RequiredOfficeDaysPerWeek));
-    Console.WriteLine(AttendanceReportService.FormatWeeklyHoursSummary(storage.LoadAll(), emailService.DailyHourGoal));
+    // Typing "wfh" again without a number leaves existing hours alone.
+    if (hours.HasValue) record.WfhHours = hours;
+
+    storage.Save(record);
+
+    var credited = AttendanceReportService.GetWfhCredit(record, emailService.DailyHourGoal);
+    var suffix = record.WfhHours.HasValue ? "" : " (default - change it with e.g. 'wfh 7.5')";
+
+    Console.WriteLine(existing is null
+        ? $"\n{todayDisplay} logged as WFH - {ShiftCalculationService.FormatDuration(credited)} credited.{suffix}"
+        : $"\n{todayDisplay} updated - {ShiftCalculationService.FormatDuration(credited)} credited.{suffix}");
+
+    var all = storage.LoadAll();
+    Console.WriteLine(AttendanceReportService.FormatWeekSummary(all, emailService.RequiredOfficeDaysPerWeek));
+    Console.WriteLine(AttendanceReportService.FormatOfficeTargetSummary(all, emailService.RequiredOfficeDaysPerWeek, emailService.DailyHourGoal));
+    Console.WriteLine(AttendanceReportService.FormatWeeklyHoursSummary(all, emailService.DailyHourGoal));
     Console.WriteLine();
 }
 
@@ -354,8 +389,9 @@ static void ViewWeek(ShiftStorageService storage, EmailService emailService)
 {
     var all = storage.LoadAll();
     Console.WriteLine();
-    Console.WriteLine(AttendanceReportService.FormatDayWiseLog(all));
+    Console.WriteLine(AttendanceReportService.FormatDayWiseLog(all, emailService.DailyHourGoal));
     Console.WriteLine(AttendanceReportService.FormatOfficeHoursSummary(all));
+    Console.WriteLine(AttendanceReportService.FormatOfficeTargetSummary(all, emailService.RequiredOfficeDaysPerWeek, emailService.DailyHourGoal));
     Console.WriteLine(AttendanceReportService.FormatWeekSummary(all, emailService.RequiredOfficeDaysPerWeek));
     Console.WriteLine(AttendanceReportService.FormatWeeklyHoursSummary(all, emailService.DailyHourGoal));
     Console.WriteLine();
@@ -451,6 +487,7 @@ static void PrintShiftSummary(ShiftRecord shift, ShiftStorageService storage, Em
     Console.WriteLine("----------------------------------------");
     var all = storage.LoadAll();
     Console.WriteLine(AttendanceReportService.FormatOfficeHoursSummary(all));
+    Console.WriteLine(AttendanceReportService.FormatOfficeTargetSummary(all, emailService.RequiredOfficeDaysPerWeek, emailService.DailyHourGoal));
     Console.WriteLine(AttendanceReportService.FormatWeekSummary(all, emailService.RequiredOfficeDaysPerWeek));
     Console.WriteLine(AttendanceReportService.FormatWeeklyHoursSummary(all, emailService.DailyHourGoal));
     Console.WriteLine("========================================\n");
@@ -461,8 +498,16 @@ static void PrintShiftSummary(ShiftRecord shift, ShiftStorageService storage, Em
 /// no new dependency, and nothing retained between redraws.
 /// Repaints once a second until any key is pressed.
 /// </summary>
-static void ShowDashboard(ShiftStorageService storage, EmailService emailService)
+static void ShowDashboard(ShiftStorageService storage, EmailService emailService, NotificationService notifier)
 {
+    // Prefer a real window where the platform has one. It reads its own frames,
+    // so it keeps updating after this method returns and the prompt stays usable.
+    if (notifier.TryShowDashboard(() => BuildSnapshot(storage, emailService)))
+    {
+        Console.WriteLine("\nDashboard window opened - it updates every second. Double-click the tray icon to bring it back.\n");
+        return;
+    }
+
     var shift = storage.GetToday();
 
     if (shift is null)
@@ -534,6 +579,54 @@ static void ShowDashboard(ShiftStorageService storage, EmailService emailService
         catch (PlatformNotSupportedException) { }
         Console.Clear();
     }
+}
+
+/// <summary>
+/// One frame of live status, or null when there is nothing to show today.
+/// Called on the UI thread's timer, so it stays cheap and allocates nothing it
+/// does not hand straight back.
+/// </summary>
+static DashboardSnapshot? BuildSnapshot(ShiftStorageService storage, EmailService emailService)
+{
+    var shift = storage.GetToday();
+    if (shift is null || shift.IsWfh) return null;
+
+    var spent = ShiftCalculationService.GetTimeSpent(shift);
+    var left95 = ShiftCalculationService.GetTimeLeft(shift, shift.Exit95);
+    var left100 = ShiftCalculationService.GetTimeLeft(shift, shift.Exit100);
+
+    var total = shift.Exit100.ToTimeSpan() - shift.EntryTime.ToTimeSpan();
+    if (total <= TimeSpan.Zero) total = TimeSpan.FromHours(9);
+
+    var all = storage.LoadAll();
+    var officeLogged = AttendanceReportService.GetOfficeHoursThisWeek(all);
+    var officeTarget = AttendanceReportService.GetOfficeHoursTarget(emailService.RequiredOfficeDaysPerWeek, emailService.DailyHourGoal);
+
+    var days = AttendanceReportService
+        .GetWeekBreakdown(all, emailService.DailyHourGoal)
+        .Select(d => new DayBar(d.Label, d.Hours.TotalHours, d.IsWfh, d.IsToday))
+        .ToList();
+
+    return new DashboardSnapshot(
+        Date: shift.Date,
+        Clock: DateTime.Now.ToString("dddd, d MMM  h:mm:ss tt"),
+        Logged: ShiftCalculationService.FormatDuration(spent),
+        Fraction: Math.Clamp(spent.TotalSeconds / total.TotalSeconds, 0d, 1d),
+        Entry: shift.EntryTime.ToString("h:mm:ss tt"),
+        Location: shift.Location ?? "",
+        Exit95: shift.Exit95.ToString("h:mm:ss tt"),
+        Exit100: shift.Exit100.ToString("h:mm:ss tt"),
+        Left95: left95 > TimeSpan.Zero ? $"in {ShiftCalculationService.FormatDuration(left95)}" : "reached",
+        Left100: left100 > TimeSpan.Zero ? $"in {ShiftCalculationService.FormatDuration(left100)}" : "reached",
+        Status: ShiftCalculationService.GetEntryStatus(shift),
+        OfficeHours: AttendanceReportService.FormatOfficeHoursSummary(all),
+        WeekSummary: AttendanceReportService.FormatWeekSummary(all, emailService.RequiredOfficeDaysPerWeek),
+        WeeklyHours: AttendanceReportService.FormatWeeklyHoursSummary(all, emailService.DailyHourGoal),
+        OfficeLoggedHours: officeLogged.TotalHours,
+        OfficeTargetHours: officeTarget.TotalHours,
+        OfficeTargetText: AttendanceReportService.FormatOfficeTargetSummary(all, emailService.RequiredOfficeDaysPerWeek, emailService.DailyHourGoal),
+        Days: days,
+        DailyGoalHours: emailService.DailyHourGoal.TotalHours);
 }
 
 /// <summary>Builds the panel as plain text so it can be painted or printed once.</summary>
