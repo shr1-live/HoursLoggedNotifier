@@ -16,4 +16,10 @@ public interface IDashboardHost
     /// Returns false when a window could not be shown.
     /// </summary>
     bool TryShowDashboard(Func<DashboardSnapshot?> nextFrame);
+
+    /// <summary>
+    /// Opens the small always-on-top ring that floats over other windows.
+    /// Returns false when this platform has no such thing.
+    /// </summary>
+    bool TryShowFloatingWidget(Func<DashboardSnapshot?> nextFrame);
 }

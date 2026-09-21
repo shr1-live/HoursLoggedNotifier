@@ -32,6 +32,10 @@ public class NotificationService : IDisposable
     public bool TryShowDashboard(Func<DashboardSnapshot?> nextFrame) =>
         _notifier is IDashboardHost host && host.TryShowDashboard(nextFrame);
 
+    /// <summary>Opens the floating always-on-top ring, where the platform has one.</summary>
+    public bool TryShowFloatingWidget(Func<DashboardSnapshot?> nextFrame) =>
+        _notifier is IDashboardHost host && host.TryShowFloatingWidget(nextFrame);
+
     private static IPlatformNotifier CreateNotifier()
     {
 #if WINDOWS_TRAY

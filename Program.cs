@@ -20,7 +20,7 @@ StartReminderLoop(storage, emailService, notifier);
 var running = true;
 while (running)
 {
-    Console.WriteLine("Paste your shift + biometric block below (or type: ui / today / history / week / wfh / interval / testemail / testnotify / exit)");
+    Console.WriteLine("Paste your shift + biometric block below (or type: ui / widget / today / history / week / wfh / interval / testemail / testnotify / exit)");
     Console.Write("> ");
     var firstLine = Console.ReadLine();
     if (firstLine is null) break;
@@ -64,6 +64,11 @@ while (running)
         case "dashboard":
         case "live":
             ShowDashboard(storage, emailService, notifier);
+            continue;
+        case "widget":
+        case "ring":
+        case "float":
+            ShowFloatingWidget(storage, emailService, notifier);
             continue;
         case "exit":
         case "4":
@@ -579,6 +584,22 @@ static void ShowDashboard(ShiftStorageService storage, EmailService emailService
         catch (PlatformNotSupportedException) { }
         Console.Clear();
     }
+}
+
+/// <summary>
+/// Opens the small always-on-top ring that floats over other windows.
+/// Falls back to the console panel where the platform has no such widget.
+/// </summary>
+static void ShowFloatingWidget(ShiftStorageService storage, EmailService emailService, NotificationService notifier)
+{
+    if (notifier.TryShowFloatingWidget(() => BuildSnapshot(storage, emailService)))
+    {
+        Console.WriteLine("\nFloating ring opened - drag it anywhere, double-click it to close.\n");
+        return;
+    }
+
+    Console.WriteLine("\nThis platform has no floating widget. Showing the console panel instead.");
+    ShowDashboard(storage, emailService, notifier);
 }
 
 /// <summary>

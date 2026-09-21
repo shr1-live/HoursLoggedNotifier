@@ -16,6 +16,7 @@ public class WindowsTrayNotifier : IPlatformNotifier, IDashboardHost
     private Form? _pumpForm;
     private NotifyIcon? _icon;
     private DashboardForm? _dashboard;
+    private FloatingRingWidget? _widget;
     private Func<DashboardSnapshot?>? _nextFrame;
 
     public WindowsTrayNotifier()
@@ -78,6 +79,26 @@ public class WindowsTrayNotifier : IPlatformNotifier, IDashboardHost
         return true;
     }
 
+    public bool TryShowFloatingWidget(Func<DashboardSnapshot?> nextFrame)
+    {
+        if (_pumpForm is null) return false;
+
+        _nextFrame = nextFrame;
+        _pumpForm.Invoke(new Action(() =>
+        {
+            if (_widget is null || _widget.IsDisposed)
+            {
+                _widget = new FloatingRingWidget(nextFrame);
+                _widget.FormClosed += (_, _) => _widget = null;
+                _widget.Show();
+            }
+
+            _widget.BringToFront();
+        }));
+
+        return true;
+    }
+
     /// <summary>Opens the window, or brings the existing one forward. Pump thread only.</summary>
     private void OpenDashboard()
     {
@@ -99,6 +120,7 @@ public class WindowsTrayNotifier : IPlatformNotifier, IDashboardHost
         if (_pumpForm is null || _icon is null) return;
         _pumpForm.Invoke(new Action(() =>
         {
+            _widget?.Close();
             _dashboard?.Close();
             _icon.Visible = false;
             _icon.Dispose();
