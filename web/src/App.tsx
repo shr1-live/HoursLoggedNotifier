@@ -6,6 +6,7 @@ import {
   WeeklyTrend,
 } from './components/Analytics';
 import { FocusView } from './components/FocusView';
+import { HoursMinutesInput } from './components/HoursMinutesInput';
 import { RingGauge } from './components/RingGauge';
 import { WeekChart } from './components/WeekChart';
 import {
@@ -41,6 +42,13 @@ import {
   saveShifts,
   upsert,
 } from './domain/storage';
+import {
+  applyTheme,
+  loadTheme,
+  saveTheme,
+  watchSystemTheme,
+  type Theme,
+} from './domain/theme';
 import { displayDate, formatDuration, formatTimeOfDay, isoDate, parseClock } from './domain/time';
 import type { Settings, ShiftRecord } from './domain/types';
 
@@ -50,6 +58,7 @@ export default function App() {
   const [records, setRecords] = useState<ShiftRecord[]>(() => loadShifts());
   const [settings, setSettings] = useState<Settings>(() => loadSettings());
   const [paste, setPaste] = useState('');
+  const [wfhEntry, setWfhEntry] = useState(9.5);
   const [notice, setNotice] = useState<Notice>(null);
   const [portalStatus, setPortalStatus] = useState<string | undefined>();
   // Ticks once a second so the live figures move without re-reading storage.
@@ -83,7 +92,15 @@ export default function App() {
     && new URLSearchParams(window.location.search).has('focus');
 
   const [permission, setPermission] = useState(() => notificationPermission());
+  const [theme, setTheme] = useState<Theme>(() => loadTheme());
   const [persistent, setPersistent] = useState(false);
+
+  useEffect(() => {
+    applyTheme(theme);
+    saveTheme(theme);
+    // Following the system means reacting when it changes, not only on load.
+    return theme === 'system' ? watchSystemTheme(() => applyTheme('system')) : undefined;
+  }, [theme]);
   const [lastExport, setLastExport] = useState<Date | null>(() => lastExportedAt());
 
   // Ask once on load; browsers grant this based on engagement, so it may take
@@ -108,8 +125,8 @@ export default function App() {
   }, [today, todayIso, settings.notifyOnThreshold, settings.alertThresholds]);
 
 
-  function handleParse() {
-    const result = parseShiftBlock(paste, now);
+  function handleParse(asWfh = false) {
+    const result = parseShiftBlock(paste, now, asWfh);
     if (result.error || !result.record) {
       setNotice({ kind: 'error', text: result.error ?? 'Could not read that block.' });
       return;
@@ -117,7 +134,12 @@ export default function App() {
     setRecords((current) => upsert(current, result.record!));
     setPortalStatus(result.portalStatus);
     setPaste('');
-    setNotice({ kind: 'ok', text: `Saved ${result.record.Date}.` });
+    setNotice({
+      kind: 'ok',
+      text: asWfh
+        ? `Saved ${result.record.Date} as WFH - ${formatDuration(wfhCredit(result.record, settings))} credited.`
+        : `Saved ${result.record.Date}.`,
+    });
   }
 
   function logWfh(hours?: number) {
@@ -190,12 +212,24 @@ export default function App() {
         <div>
           <h1>Hours Logged</h1>
           <p className="muted">
+            <span className="live-dot" aria-hidden="true" />
             {now.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })}
             {' · '}
             {now.toLocaleTimeString('en-GB')}
           </p>
         </div>
         <div className="header-actions">
+          <span className="theme-switch" role="group" aria-label="Theme">
+            {(['light', 'system', 'dark'] as Theme[]).map((option) => (
+              <button
+                key={option}
+                className={theme === option ? 'active' : ''}
+                onClick={() => setTheme(option)}
+              >
+                {option === 'light' ? 'Light' : option === 'dark' ? 'Dark' : 'Auto'}
+              </button>
+            ))}
+          </span>
           <button
             className="primary"
             onClick={() =>
@@ -368,8 +402,11 @@ export default function App() {
             spellCheck={false}
           />
           <div className="row">
-            <button className="primary" onClick={handleParse} disabled={!paste.trim()}>
-              Parse and save
+            <button className="primary" onClick={() => handleParse(false)} disabled={!paste.trim()}>
+              Save as office day
+            </button>
+            <button onClick={() => handleParse(true)} disabled={!paste.trim()}>
+              Save as WFH
             </button>
             <button onClick={() => setPaste('')} disabled={!paste}>
               Clear
@@ -381,20 +418,10 @@ export default function App() {
             <button onClick={() => logWfh()}>
               Log WFH ({settings.dailyGoalHours}h default)
             </button>
-            <input
-              type="number"
-              min={0.5}
-              max={24}
-              step={0.5}
-              placeholder="hours"
-              aria-label="WFH hours"
-              onKeyDown={(e) => {
-                if (e.key !== 'Enter') return;
-                const value = Number((e.target as HTMLInputElement).value);
-                if (value > 0 && value <= 24) logWfh(value);
-              }}
-            />
-            <span className="muted small">type hours, press Enter</span>
+            <HoursMinutesInput value={wfhEntry} onChange={setWfhEntry} />
+            <button onClick={() => logWfh(wfhEntry)} disabled={wfhEntry <= 0}>
+              Log these hours
+            </button>
           </div>
         </article>
 
@@ -424,24 +451,16 @@ export default function App() {
           </label>
           <label>
             Daily hour goal
-            <input
-              type="number"
-              min={1}
-              max={24}
-              step={0.5}
+            <HoursMinutesInput
               value={settings.dailyGoalHours}
-              onChange={(e) => setSettings({ ...settings, dailyGoalHours: Number(e.target.value) })}
+              onChange={(dailyGoalHours) => setSettings({ ...settings, dailyGoalHours })}
             />
           </label>
           <label>
             Default WFH hours
-            <input
-              type="number"
-              min={0}
-              max={24}
-              step={0.5}
+            <HoursMinutesInput
               value={settings.defaultWfhHours}
-              onChange={(e) => setSettings({ ...settings, defaultWfhHours: Number(e.target.value) })}
+              onChange={(defaultWfhHours) => setSettings({ ...settings, defaultWfhHours })}
             />
           </label>
           <label className="checkbox">

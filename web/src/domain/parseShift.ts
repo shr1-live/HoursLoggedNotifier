@@ -61,7 +61,7 @@ function parseDate(line: string, today: Date): Date | null {
   return candidate;
 }
 
-export function parseShiftBlock(text: string, today = new Date()): ParseResult {
+export function parseShiftBlock(text: string, today = new Date(), asWfh = false): ParseResult {
   const lines = text
     .split('\n')
     .map((l) => l.trim())
@@ -116,6 +116,29 @@ export function parseShiftBlock(text: string, today = new Date()): ParseResult {
   }
 
   if (date === null) return { error: 'Could not find a date such as "(21 Sept)".' };
+
+  // A WFH day may be pasted with only a date and a shift range - there is no
+  // biometric entry to record, so the scheduled shift is what gets credited.
+  if (asWfh) {
+    let wfhHours: number | undefined;
+    if (shiftStart !== null && shiftEnd !== null) {
+      let span = shiftEnd - shiftStart;
+      if (span < 0) span += 86400;
+      wfhHours = Number((span / 3600).toFixed(4));
+    }
+
+    return {
+      record: {
+        Date: displayDate(date),
+        FullDate: isoDate(date),
+        IsWfh: true,
+        // Left undefined when no range was given, so the default applies.
+        WfhHours: wfhHours,
+      },
+      portalStatus,
+    };
+  }
+
   if (shiftStart === null || shiftEnd === null) {
     return { error: 'Could not find a shift range such as "10:00 AM - 7:00 PM".' };
   }

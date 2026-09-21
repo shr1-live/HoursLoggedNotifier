@@ -1,16 +1,36 @@
 :root {
+  /* Light palette is the base, so a missing data-theme still renders. */
+  --bg: #f4f6f9;
+  --panel: #ffffff;
+  --panel-soft: #eef1f6;
+  --line: #d8dee7;
+  --text: #1b1f27;
+  --muted: #5c6472;
+  --accent: #1f7fc4;
+  --accent-ink: #ffffff;
+  --good: #1f9d5c;
+  --warn: #b57614;
+  --bad: #c33b3b;
+  --grid: #e4e8ee;
+  --shadow: 0 1px 2px rgba(16, 20, 28, 0.06), 0 4px 16px rgba(16, 20, 28, 0.06);
+
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+}
+
+:root[data-theme='dark'] {
   --bg: #181a20;
   --panel: #20232b;
+  --panel-soft: #1a1d24;
   --line: #30343e;
   --text: #e6e8ec;
   --muted: #969ba5;
   --accent: #78c8ff;
+  --accent-ink: #10131a;
   --good: #4cc984;
   --warn: #e8b246;
   --bad: #dc6060;
-
-  color-scheme: dark;
-  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --grid: #282c35;
+  --shadow: none;
 }
 
 * { box-sizing: border-box; }
@@ -115,7 +135,7 @@ body {
 }
 
 button {
-  background: #2a2e38;
+  background: var(--panel-soft);
   color: var(--text);
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -124,17 +144,17 @@ button {
   cursor: pointer;
 }
 
-button:hover:not(:disabled) { background: #333845; }
+button:hover:not(:disabled) { background: var(--line); }
 button:disabled { opacity: 0.45; cursor: not-allowed; }
 
 button.primary {
   background: var(--accent);
   border-color: var(--accent);
-  color: #10131a;
+  color: var(--accent-ink);
   font-weight: 600;
 }
 
-button.primary:hover:not(:disabled) { background: #96d4ff; }
+button.primary:hover:not(:disabled) { filter: brightness(1.08); }
 
 button.link {
   background: none;
@@ -146,7 +166,7 @@ button.link {
 
 textarea, input[type='number'], input[type='text'] {
   width: 100%;
-  background: #1a1d24;
+  background: var(--panel-soft);
   color: var(--text);
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -189,7 +209,7 @@ tbody tr:last-child td { border-bottom: none; }
 }
 
 .stat {
-  background: #1a1d24;
+  background: var(--panel-soft);
   border: 1px solid var(--line);
   border-radius: 10px;
   padding: 12px 14px;
@@ -251,3 +271,66 @@ label.checkbox input { width: auto; margin: 0; }
 
 .focus-rows > div:last-child { border-bottom: none; }
 .focus-clock { margin: 0; }
+
+
+/* --- theming and motion --- */
+body { transition: background-color 0.25s ease, color 0.25s ease; }
+
+.card {
+  box-shadow: var(--shadow);
+  transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.card:hover { border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); }
+
+.stat {
+  transition: transform 0.18s ease, border-color 0.18s ease;
+}
+
+.stat:hover {
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--accent) 50%, var(--line));
+}
+
+button, input, textarea { transition: background-color 0.18s ease, border-color 0.18s ease; }
+
+/* A quiet pulse showing the figures are live rather than stale. */
+.live-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--good);
+  margin-right: 6px;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.45; transform: scale(0.8); }
+}
+
+.section-enter { animation: rise 0.35s ease both; }
+
+@keyframes rise {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* Hours + minutes control. */
+.hm-input { display: inline-flex; align-items: center; gap: 6px; margin-top: 6px; }
+.hm-input input { width: 72px; }
+.hm-unit { color: var(--muted); font-size: 0.85rem; }
+
+/* Theme switch. */
+.theme-switch { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.theme-switch button { border: none; border-radius: 0; padding: 7px 11px; background: transparent; }
+.theme-switch button.active { background: var(--accent); color: var(--accent-ink); font-weight: 600; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
