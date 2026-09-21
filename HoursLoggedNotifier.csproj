@@ -26,6 +26,8 @@
     <Compile Remove="Ui/DashboardForm.cs" />
     <Compile Remove="Ui/RingGauge.cs" />
     <Compile Remove="Ui/WeekBarChart.cs" />
+    <Compile Remove="Ui/LayeredWindow.cs" />
+    <Compile Remove="Ui/FloatingRingWidget.cs" />
   </ItemGroup>
 
 </Project>
