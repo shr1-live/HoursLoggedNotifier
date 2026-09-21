@@ -1,0 +1,15 @@
+bin/
+obj/
+publish/
+publish-standalone/
+shifts.json
+appsettings.json
+
+# local agent/tooling session state - not part of the project
+.omo/
+
+# web dashboard build output and dependencies
+web/node_modules/
+web/dist/
+web/.netlify/
+*.local

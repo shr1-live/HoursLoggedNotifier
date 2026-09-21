@@ -1,0 +1,3 @@
+# Keep launchers usable on the OS that runs them: a CRLF shebang breaks sh.
+*.sh text eol=lf
+*.bat text eol=crlf

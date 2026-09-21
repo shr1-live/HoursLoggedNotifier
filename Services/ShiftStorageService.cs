@@ -1,0 +1,37 @@
+using System.Text.Json;
+using HoursLoggedNotifier.Models;
+
+namespace HoursLoggedNotifier.Services;
+
+public class ShiftStorageService
+{
+    private readonly string _filePath;
+
+    public ShiftStorageService(string filePath = "shifts.json")
+    {
+        _filePath = filePath;
+    }
+
+    public List<ShiftRecord> LoadAll()
+    {
+        if (!File.Exists(_filePath))
+            return new List<ShiftRecord>();
+
+        var json = File.ReadAllText(_filePath);
+        return JsonSerializer.Deserialize<List<ShiftRecord>>(json) ?? new List<ShiftRecord>();
+    }
+
+    public void Save(ShiftRecord shift)
+    {
+        var all = LoadAll();
+        all.RemoveAll(s => s.FullDate == shift.FullDate || s.Date == shift.Date);
+        all.Add(shift);
+
+        var json = JsonSerializer.Serialize(all, new JsonSerializerOptions { WriteIndented = true });
+        File.WriteAllText(_filePath, json);
+    }
+
+    public ShiftRecord? GetByDate(DateOnly date) => LoadAll().FirstOrDefault(s => s.FullDate == date);
+
+    public ShiftRecord? GetToday() => GetByDate(DateOnly.FromDateTime(DateTime.Now));
+}

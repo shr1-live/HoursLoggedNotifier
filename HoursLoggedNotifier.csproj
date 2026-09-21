@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <!--
+    Windows builds target the Windows TFM so the tray-balloon notifier can use
+    WinForms. Every other OS builds the portable TFM and drops that file, which
+    keeps the project buildable on Linux and macOS.
+  -->
+  <PropertyGroup Condition="'$(OS)' == 'Windows_NT'">
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <DefineConstants>$(DefineConstants);WINDOWS_TRAY</DefineConstants>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(OS)' != 'Windows_NT'">
+    <TargetFramework>net10.0</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(OS)' != 'Windows_NT'">
+    <Compile Remove="Services/Notifications/WindowsTrayNotifier.cs" />
+    <Compile Remove="Ui/DashboardForm.cs" />
+    <Compile Remove="Ui/RingGauge.cs" />
+    <Compile Remove="Ui/WeekBarChart.cs" />
+  </ItemGroup>
+
+</Project>

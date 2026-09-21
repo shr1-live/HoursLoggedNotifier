@@ -1,0 +1,27 @@
+# Netlify builds from this folder, so "base" keeps npm in web/ rather than the
+# repository root, which holds the .NET app.
+[build]
+  base = "web"
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "20"
+
+# Single-page app: unknown paths must return index.html rather than a 404.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    # Asset filenames carry a content hash, so they can be cached indefinitely.
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/index.html"
+  [headers.values]
+    # The entry point must revalidate, or a deploy never reaches returning users.
+    Cache-Control = "no-cache"
