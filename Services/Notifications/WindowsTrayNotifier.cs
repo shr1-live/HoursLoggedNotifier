@@ -17,6 +17,7 @@ public class WindowsTrayNotifier : IPlatformNotifier, IDashboardHost
     private NotifyIcon? _icon;
     private DashboardForm? _dashboard;
     private FloatingRingWidget? _widget;
+    private FloatingBarWidget? _bar;
     private Func<DashboardSnapshot?>? _nextFrame;
 
     public WindowsTrayNotifier()
@@ -99,6 +100,23 @@ public class WindowsTrayNotifier : IPlatformNotifier, IDashboardHost
         return true;
     }
 
+    public bool TryShowFloatingBar(Func<DashboardSnapshot?> nextFrame, bool vertical)
+    {
+        if (_pumpForm is null) return false;
+
+        _pumpForm.Invoke(new Action(() =>
+        {
+            // Only one line at a time, so switching orientation replaces it.
+            _bar?.Close();
+            _bar = new FloatingBarWidget(nextFrame,
+                vertical ? BarOrientation.Vertical : BarOrientation.Horizontal);
+            _bar.FormClosed += (_, _) => _bar = null;
+            _bar.Show();
+        }));
+
+        return true;
+    }
+
     /// <summary>Opens the window, or brings the existing one forward. Pump thread only.</summary>
     private void OpenDashboard()
     {
@@ -120,6 +138,7 @@ public class WindowsTrayNotifier : IPlatformNotifier, IDashboardHost
         if (_pumpForm is null || _icon is null) return;
         _pumpForm.Invoke(new Action(() =>
         {
+            _bar?.Close();
             _widget?.Close();
             _dashboard?.Close();
             _icon.Visible = false;
