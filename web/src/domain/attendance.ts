@@ -57,6 +57,8 @@ export interface WeekTotals {
   /** 95% of the office target - the threshold that actually gets checked. */
   officeMark95Seconds: number;
   weeklyTargetSeconds: number;
+  /** 95% of the weekly target - the point the week counts as done. */
+  weeklyMark95Seconds: number;
   /** Days already accounted for, used to spread what is left. */
   accountedDays: number;
 }
@@ -98,6 +100,7 @@ export function weekTotals(records: ShiftRecord[], settings: Settings, now = new
     officeTargetSeconds,
     officeMark95Seconds: Math.round(officeTargetSeconds * 0.95),
     weeklyTargetSeconds: hoursToSeconds(settings.dailyGoalHours * settings.workdaysPerWeek),
+    weeklyMark95Seconds: Math.round(hoursToSeconds(settings.dailyGoalHours * settings.workdaysPerWeek) * 0.95),
     accountedDays,
   };
 }
@@ -188,4 +191,13 @@ export function todayStatus(records: ShiftRecord[], now = new Date(), targetExit
     /** True once the chosen finish line is reached. */
     reachedGoal: upTo >= goalExit,
   };
+}
+
+/**
+ * A day counts as done at 95% of its goal, whether it was spent in the office
+ * or at home - the same rule everywhere rather than one for each.
+ */
+export function isDayComplete(record: ShiftRecord, settings: Settings, now = new Date()): boolean {
+  const logged = record.IsWfh ? wfhCredit(record, settings) : loggedSeconds(record, now);
+  return logged >= hoursToSeconds(settings.dailyGoalHours) * 0.95;
 }

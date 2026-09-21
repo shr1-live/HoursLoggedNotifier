@@ -43,6 +43,19 @@ public static class AttendanceReportService
     public static TimeSpan GetWfhCredit(ShiftRecord record, TimeSpan dailyGoal) =>
         record.WfhHours.HasValue ? TimeSpan.FromHours(record.WfhHours.Value) : dailyGoal;
 
+    /// <summary>
+    /// A day counts as done at 95% of its goal, whether it was spent in the
+    /// office or at home - the same rule everywhere rather than one for each.
+    /// </summary>
+    public static bool IsDayComplete(ShiftRecord record, TimeSpan dailyGoal)
+    {
+        var logged = record.IsWfh
+            ? GetWfhCredit(record, dailyGoal)
+            : GetLoggedDuration(record, DateTime.Now);
+
+        return logged.Ticks >= (long)(dailyGoal.Ticks * 0.95);
+    }
+
     /// <summary>Time actually spent in the office this week, today included.</summary>
     public static TimeSpan GetOfficeHoursThisWeek(List<ShiftRecord> all)
     {
@@ -156,14 +169,18 @@ public static class AttendanceReportService
                 accountedDays++;
         }
 
-        var pending = weeklyTarget - logged;
+        // 95% counts as done here too, the same rule that applies to a single
+        // day and to the office target - so the week finishes at 42h 45m of 45h
+        // rather than demanding the last quarter hour.
+        var mark95 = TimeSpan.FromTicks((long)(weeklyTarget.Ticks * 0.95));
+        var pending = mark95 - logged;
         if (pending < TimeSpan.Zero) pending = TimeSpan.Zero;
 
         if (pending == TimeSpan.Zero)
-            return $"Weekly hours: {ShiftCalculationService.FormatDuration(logged)} / {ShiftCalculationService.FormatDuration(weeklyTarget)} - target met.";
+            return $"Weekly hours: {ShiftCalculationService.FormatDuration(logged)} / {ShiftCalculationService.FormatDuration(weeklyTarget)} - past the 95% mark ({ShiftCalculationService.FormatDuration(mark95)}), week done.";
 
         var remainingDays = Math.Max(WorkdaysPerWeek - accountedDays, 0);
-        var line = $"Weekly hours: {ShiftCalculationService.FormatDuration(logged)} / {ShiftCalculationService.FormatDuration(weeklyTarget)} logged - {ShiftCalculationService.FormatDuration(pending)} pending";
+        var line = $"Weekly hours: {ShiftCalculationService.FormatDuration(logged)} / {ShiftCalculationService.FormatDuration(weeklyTarget)} logged - {ShiftCalculationService.FormatDuration(pending)} to the 95% mark ({ShiftCalculationService.FormatDuration(mark95)})";
 
         if (remainingDays == 0)
             return line + " (no workdays left this week).";
@@ -179,9 +196,13 @@ public static class AttendanceReportService
         if (weekRecords.Count == 0)
             return "No attendance logged yet this week.";
 
-        var lines = weekRecords.Select(r => r.IsWfh
-            ? $"{r.Date}: WFH - {ShiftCalculationService.FormatDuration(GetWfhCredit(r, dailyGoal))}{(r.WfhHours.HasValue ? "" : " (default)")}"
-            : $"{r.Date}: Office ({r.Location ?? "location unknown"}) - Entry {r.EntryTime:h:mm:ss tt}, {ShiftCalculationService.FormatDuration(GetLoggedDuration(r, DateTime.Now))}");
+        var lines = weekRecords.Select(r =>
+        {
+            var done = IsDayComplete(r, dailyGoal) ? " [done]" : "";
+            return r.IsWfh
+                ? $"{r.Date}: WFH - {ShiftCalculationService.FormatDuration(GetWfhCredit(r, dailyGoal))}{(r.WfhHours.HasValue ? "" : " (default)")}{done}"
+                : $"{r.Date}: Office ({r.Location ?? "location unknown"}) - Entry {r.EntryTime:h:mm:ss tt}, {ShiftCalculationService.FormatDuration(GetLoggedDuration(r, DateTime.Now))}{done}";
+        });
 
         return string.Join("\n", lines);
     }

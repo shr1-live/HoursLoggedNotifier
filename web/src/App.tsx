@@ -538,8 +538,13 @@ export default function App() {
         <p className="muted small">
           Weekly hours: {formatDuration(totals.totalSeconds)} /{' '}
           {formatDuration(totals.weeklyTargetSeconds)}
-          {totals.totalSeconds < totals.weeklyTargetSeconds &&
-            ` · ${formatDuration(totals.weeklyTargetSeconds - totals.totalSeconds)} pending`}
+          {totals.totalSeconds >= totals.weeklyMark95Seconds ? (
+            <span className="good">
+              {` · past the 95% mark (${formatDuration(totals.weeklyMark95Seconds)}) - week done`}
+            </span>
+          ) : (
+            ` · ${formatDuration(totals.weeklyMark95Seconds - totals.totalSeconds)} to the 95% mark (${formatDuration(totals.weeklyMark95Seconds)})`
+          )}
         </p>
       </section>
 
