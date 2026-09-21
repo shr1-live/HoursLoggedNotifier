@@ -16,6 +16,33 @@
   to = "/index.html"
   status = 200
 
+# Security headers for every response.
+#
+# The app makes no network requests of its own and stores everything in the
+# visitor's own localStorage, so almost everything can be denied outright.
+# The one relaxation is style-src 'unsafe-inline': React and Recharts set
+# style attributes on elements, which CSP counts as inline styles. That
+# permits styling, not script execution, so it does not weaken the XSS
+# protection that script-src provides.
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Content-Security-Policy = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'; frame-ancestors 'none'; upgrade-insecure-requests"
+    # Stops the site being framed, so it cannot be used for clickjacking.
+    X-Frame-Options = "DENY"
+    # Stops the browser guessing a content type different from the one sent.
+    X-Content-Type-Options = "nosniff"
+    # Never leak the URL to third parties.
+    Referrer-Policy = "no-referrer"
+    # The app needs none of these, so deny them rather than leave them available.
+    Permissions-Policy = "accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=(), interest-cohort=()"
+    # HTTPS only from now on. Deliberately without "preload", which is
+    # effectively irreversible once submitted.
+    Strict-Transport-Security = "max-age=31536000; includeSubDomains"
+    # Isolate this origin from any other page that opens it.
+    Cross-Origin-Opener-Policy = "same-origin"
+    Cross-Origin-Resource-Policy = "same-origin"
+
 [[headers]]
   for = "/assets/*"
   [headers.values]
