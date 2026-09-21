@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { BarWidget } from './BarWidget';
 import { MiniWidget } from './MiniWidget';
+import { VerticalBarWidget } from './VerticalBarWidget';
 
 interface AdaptiveWidgetProps {
   fraction: number | null;
@@ -14,9 +15,11 @@ interface AdaptiveWidgetProps {
  * stretch it wide and it becomes a progress line, leave it square and it stays
  * a ring. Resizing switches it live, so there is nothing to configure.
  */
+type Layout = 'ring' | 'bar' | 'column';
+
 export function AdaptiveWidget(props: AdaptiveWidgetProps) {
   const hostRef = useRef<HTMLDivElement>(null);
-  const [wide, setWide] = useState(false);
+  const [layout, setLayout] = useState<Layout>('ring');
 
   useEffect(() => {
     const element = hostRef.current;
@@ -24,9 +27,11 @@ export function AdaptiveWidget(props: AdaptiveWidgetProps) {
 
     const measure = () => {
       const { width, height } = element.getBoundingClientRect();
-      if (height <= 0) return;
-      // Comfortably wider than tall means there is no room for a ring.
-      setWide(width / height >= 1.9);
+      if (height <= 0 || width <= 0) return;
+      const ratio = width / height;
+      // Comfortably wider than tall leaves no room for a ring, and the
+      // reverse means a column reads better than a squashed one.
+      setLayout(ratio >= 1.9 ? 'bar' : ratio <= 0.55 ? 'column' : 'ring');
     };
 
     measure();
@@ -40,7 +45,9 @@ export function AdaptiveWidget(props: AdaptiveWidgetProps) {
 
   return (
     <div ref={hostRef} className="adaptive-host">
-      {wide ? <BarWidget {...props} /> : <MiniWidget {...props} />}
+      {layout === 'bar' && <BarWidget {...props} />}
+      {layout === 'column' && <VerticalBarWidget {...props} />}
+      {layout === 'ring' && <MiniWidget {...props} />}
     </div>
   );
 }

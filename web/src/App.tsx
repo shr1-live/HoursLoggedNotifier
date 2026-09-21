@@ -299,8 +299,27 @@ export default function App() {
           <button onClick={() => void openMiniWidget()}>
             {pipSupported() ? 'Mini widget' : 'Mini window'}
           </button>
-          <button onClick={() => void openMiniWidget({ width: 620, height: 74 })}>
+          <button
+            onClick={() =>
+              // Ask for the whole usable width; the browser clamps if it will
+              // not allow it, which is better than guessing a smaller number.
+              void openMiniWidget({
+                width: Math.max(480, window.screen.availWidth - 8),
+                height: 44,
+              })
+            }
+          >
             Bar widget
+          </button>
+          <button
+            onClick={() =>
+              void openMiniWidget({
+                width: 86,
+                height: Math.max(320, window.screen.availHeight - 120),
+              })
+            }
+          >
+            Vertical bar
           </button>
           {permission !== 'granted' && permission !== 'unsupported' && (
             <button onClick={() => void requestNotificationPermission().then(setPermission)}>
