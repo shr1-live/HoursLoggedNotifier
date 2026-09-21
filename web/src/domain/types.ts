@@ -33,6 +33,8 @@ export interface Settings {
   workdaysPerWeek: number;
   /** Alert when today's shift crosses these percentages. */
   alertThresholds: number[];
+  /** Which exit time counts as the finish line for the ring and bars. */
+  targetExit: '95' | '100';
   /** Whether to raise a browser notification at those thresholds. */
   notifyOnThreshold: boolean;
 }
@@ -43,6 +45,7 @@ export const defaultSettings: Settings = {
   dailyGoalHours: 9,
   defaultWfhHours: 9.5,
   workdaysPerWeek: 5,
+  targetExit: '95',
   alertThresholds: [50, 75, 95, 100],
   notifyOnThreshold: true,
 };

@@ -32,7 +32,7 @@ export function FocusView({
   }
 
   const percent = Math.round(today.fraction * 100);
-  const state = today.fraction >= 0.95 ? 'good' : today.fraction >= 0.6 ? 'warn' : '';
+  const state = today.fraction >= 0.999 ? 'good' : today.fraction >= 0.75 ? 'warn' : '';
 
   return (
     <div className="focus">

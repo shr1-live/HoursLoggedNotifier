@@ -106,10 +106,7 @@ public sealed class FloatingRingWidget : LayeredWindow
                 g.DrawArc(arc, ring, -90f, (float)(_shown * 360));
             }
 
-            // The 95% marker, so the threshold is visible before it is reached.
-            var markAngle = -90f + 0.95f * 360f;
-            using (var tick = new Pen(Color.FromArgb(150, 255, 255, 255), 2f))
-                g.DrawArc(tick, ring, markAngle, 1.6f);
+            // No 95% marker: the end of the ring is the 95% exit now.
 
             DrawText(g, frame);
         }
@@ -147,9 +144,9 @@ public sealed class FloatingRingWidget : LayeredWindow
             new RectangleF(0, Height / 2f + 8, Width, 18), centred);
     }
 
-    private static Color ColourFor(double fraction) => fraction >= 0.95
+    private static Color ColourFor(double fraction) => fraction >= 0.999
         ? Color.FromArgb(76, 201, 132)
-        : fraction >= 0.6
+        : fraction >= 0.75
             ? Color.FromArgb(232, 178, 70)
             : Color.FromArgb(220, 96, 96);
 

@@ -702,7 +702,9 @@ static DashboardSnapshot? BuildSnapshot(ShiftStorageService storage, EmailServic
     var left95 = ShiftCalculationService.GetTimeLeft(shift, shift.Exit95);
     var left100 = ShiftCalculationService.GetTimeLeft(shift, shift.Exit100);
 
-    var total = shift.Exit100.ToTimeSpan() - shift.EntryTime.ToTimeSpan();
+    // The finish line is the 95% exit - that is when the day is actually done,
+    // so measuring to 100% would mean the ring never reads as complete on leaving.
+    var total = shift.Exit95.ToTimeSpan() - shift.EntryTime.ToTimeSpan();
     if (total <= TimeSpan.Zero) total = TimeSpan.FromHours(9);
 
     var all = storage.LoadAll();
@@ -743,7 +745,9 @@ static List<string> BuildDashboardLines(ShiftRecord shift, ShiftStorageService s
     var left95 = ShiftCalculationService.GetTimeLeft(shift, shift.Exit95);
     var left100 = ShiftCalculationService.GetTimeLeft(shift, shift.Exit100);
 
-    var total = shift.Exit100.ToTimeSpan() - shift.EntryTime.ToTimeSpan();
+    // The finish line is the 95% exit - that is when the day is actually done,
+    // so measuring to 100% would mean the ring never reads as complete on leaving.
+    var total = shift.Exit95.ToTimeSpan() - shift.EntryTime.ToTimeSpan();
     if (total <= TimeSpan.Zero) total = TimeSpan.FromHours(9);
 
     var fraction = Math.Clamp(spent.TotalSeconds / total.TotalSeconds, 0d, 1d);

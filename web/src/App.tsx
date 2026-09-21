@@ -76,7 +76,10 @@ export default function App() {
   useEffect(() => saveShifts(records), [records]);
   useEffect(() => saveSettings(settings), [settings]);
 
-  const today = useMemo(() => todayStatus(records, now), [records, now]);
+  const today = useMemo(
+    () => todayStatus(records, now, settings.targetExit),
+    [records, now, settings.targetExit],
+  );
   const totals = useMemo(() => weekTotals(records, settings, now), [records, settings, now]);
   const days = useMemo(() => weekBreakdown(records, settings, now), [records, settings, now]);
 
@@ -418,7 +421,8 @@ export default function App() {
               <RingGauge
                 fraction={today.fraction}
                 value={formatDuration(today.spentSeconds)}
-                caption="of today's shift"
+                caption={today.reachedGoal ? 'you can leave' : 'until the 95% exit'}
+                goodThreshold={1}
               />
               <dl className="facts">
                 <div>

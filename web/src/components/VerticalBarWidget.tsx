@@ -28,7 +28,7 @@ export function VerticalBarWidget({
   }
 
   const percent = Math.round(fraction * 100);
-  const state = fraction >= 0.95 ? 'good' : fraction >= 0.6 ? 'warn' : 'bad';
+  const state = fraction >= 0.999 ? 'good' : fraction >= 0.75 ? 'warn' : 'bad';
   const running = fraction < 1;
 
   return (
