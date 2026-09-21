@@ -152,9 +152,11 @@ export interface TodayStatus {
   fraction: number;
   /** True once the day has been signed off, so the clock has stopped. */
   clockedOut: boolean;
+  /** True once the chosen finish line is reached. */
+  reachedGoal: boolean;
 }
 
-export function todayStatus(records: ShiftRecord[], now = new Date()): TodayStatus | null {
+export function todayStatus(records: ShiftRecord[], now = new Date(), targetExit: '95' | '100' = '95'): TodayStatus | null {
   const record = records.find((r) => r.FullDate === isoDate(now));
   if (!record || record.IsWfh) return null;
 
@@ -169,7 +171,12 @@ export function todayStatus(records: ShiftRecord[], now = new Date()): TodayStat
   const upTo = actualExit ?? secondsSinceMidnight(now);
 
   const spentSeconds = Math.max(0, upTo - entry);
-  const total = Math.max(1, exit100 - entry);
+
+  // The finish line is the 95% exit, because that is when the day is actually
+  // done - measuring to 100% means the bar never reads as complete when you
+  // leave. Settings can move it to the full exit for anyone who stays.
+  const goalExit = targetExit === '100' ? exit100 : exit95;
+  const total = Math.max(1, goalExit - entry);
 
   return {
     record,
@@ -178,5 +185,7 @@ export function todayStatus(records: ShiftRecord[], now = new Date()): TodayStat
     left100Seconds: Math.max(0, exit100 - upTo),
     fraction: Math.min(1, spentSeconds / total),
     clockedOut: actualExit !== null,
+    /** True once the chosen finish line is reached. */
+    reachedGoal: upTo >= goalExit,
   };
 }

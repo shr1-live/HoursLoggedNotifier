@@ -101,8 +101,6 @@ public sealed class FloatingBarWidget : LayeredWindow
                 using var fillBrush = new SolidBrush(colour);
                 FillRounded(g, fillBrush, fill);
             }
-
-            DrawMark(g, track);
             DrawLabel(g, frame);
         }
 
@@ -125,23 +123,7 @@ public sealed class FloatingBarWidget : LayeredWindow
         return new RectangleF(track.X, track.Y, (float)(_shown * track.Width), track.Height);
     }
 
-    private void DrawMark(Graphics g, RectangleF track)
-    {
-        using var pen = new Pen(Color.FromArgb(190, 235, 238, 243), 2f);
-
-        if (_orientation == BarOrientation.Vertical)
-        {
-            var y = track.Bottom - 0.95f * track.Height;
-            g.DrawLine(pen, track.Left - 3, y, track.Right + 3, y);
-        }
-        else
-        {
-            var x = track.Left + 0.95f * track.Width;
-            g.DrawLine(pen, x, track.Top - 3, x, track.Bottom + 3);
-        }
-    }
-
-    private void DrawLabel(Graphics g, DashboardSnapshot? frame)
+        private void DrawLabel(Graphics g, DashboardSnapshot? frame)
     {
         using var font = new Font("Segoe UI", 9f, FontStyle.Bold);
         using var brush = new SolidBrush(frame is null
@@ -163,9 +145,9 @@ public sealed class FloatingBarWidget : LayeredWindow
         g.DrawString(text, font, brush, area, centred);
     }
 
-    private static Color ColourFor(double fraction) => fraction >= 0.95
+    private static Color ColourFor(double fraction) => fraction >= 0.999
         ? Color.FromArgb(76, 201, 132)
-        : fraction >= 0.6
+        : fraction >= 0.75
             ? Color.FromArgb(232, 178, 70)
             : Color.FromArgb(220, 96, 96);
 

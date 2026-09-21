@@ -30,7 +30,7 @@ export function BarWidget({
   }
 
   const percent = Math.round(fraction * 100);
-  const state = fraction >= 0.95 ? 'good' : fraction >= 0.6 ? 'warn' : 'bad';
+  const state = fraction >= 0.999 ? 'good' : fraction >= 0.75 ? 'warn' : 'bad';
   // The glow stops once the shift is complete, so "running" reads at a glance.
   const running = fraction < 1;
 
