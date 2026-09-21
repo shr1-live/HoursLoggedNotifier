@@ -9,7 +9,7 @@ appsettings.json
 .omo/
 
 # web dashboard build output and dependencies
-web/node_modules/
+node_modules/
 web/dist/
 web/.netlify/
 *.local

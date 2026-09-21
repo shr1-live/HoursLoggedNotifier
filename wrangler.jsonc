@@ -1,0 +1,24 @@
+{
+  // Cloudflare Workers Builds deploys with `wrangler versions upload`, which
+  // needs this file. The app is a static site, so it is served through Workers
+  // Static Assets rather than by any Worker code - there is no script entry.
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "hours-logged-notifier",
+  "compatibility_date": "2026-09-01",
+
+  // Run the Vite build here rather than relying on the host's build command
+  // being set, so a deploy cannot upload a stale or missing web/dist.
+  "build": {
+    "command": "npm run build"
+  },
+
+  "assets": {
+    // Vite builds into web/dist, and _headers there is applied by Workers too.
+    "directory": "./web/dist",
+
+    // Serve index.html for unknown paths instead of 404, so deep links and a
+    // hard refresh both work. This is the Workers equivalent of the SPA
+    // rewrite in _redirects.
+    "not_found_handling": "single-page-application"
+  }
+}
