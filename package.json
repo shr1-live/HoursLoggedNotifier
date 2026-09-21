@@ -1,0 +1,10 @@
+{
+  "name": "hours-logged-notifier",
+  "private": true,
+  "description": "Repo-root delegation so a host that builds from the repository root still finds the web app. The app itself lives in web/.",
+  "scripts": {
+    "build": "npm --prefix web ci && npm --prefix web run build",
+    "dev": "npm --prefix web run dev",
+    "preview": "npm --prefix web run preview"
+  }
+}
