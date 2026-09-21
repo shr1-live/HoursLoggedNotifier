@@ -6,6 +6,7 @@ import {
   WeeklyTrend,
 } from './components/Analytics';
 import { createPortal } from 'react-dom';
+import { EditRow } from './components/EditRow';
 import { FocusView } from './components/FocusView';
 import { HoursMinutesInput } from './components/HoursMinutesInput';
 import { AdaptiveWidget } from './components/AdaptiveWidget';
@@ -62,6 +63,8 @@ export default function App() {
   const [settings, setSettings] = useState<Settings>(() => loadSettings());
   const [paste, setPaste] = useState('');
   const [wfhEntry, setWfhEntry] = useState(9.5);
+  // Which day's row is open for correction, by ISO date.
+  const [editing, setEditing] = useState<string | null>(null);
   const [notice, setNotice] = useState<Notice>(null);
   const [portalStatus, setPortalStatus] = useState<string | undefined>();
   // Ticks once a second so the live figures move without re-reading storage.
@@ -685,33 +688,59 @@ export default function App() {
               </tr>
             </thead>
             <tbody>
-              {records.slice(0, 20).map((record) => (
-                <tr key={record.FullDate}>
-                  <td>{record.Date}</td>
-                  <td>{record.IsWfh ? 'WFH' : (record.Location ?? 'Office')}</td>
-                  <td>{record.IsWfh ? '—' : formatTimeOfDay(parseClock(record.EntryTime))}</td>
-                  <td>
-                    {formatDuration(
-                      record.IsWfh ? wfhCredit(record, settings) : loggedSeconds(record, now),
-                    )}
-                    {record.IsWfh && record.WfhHours == null && (
-                      <span className="muted"> (default)</span>
-                    )}
-                  </td>
-                  <td>
-                    <button
-                      className="link"
-                      onClick={() =>
-                        setRecords((current) =>
-                          current.filter((r) => r.FullDate !== record.FullDate),
-                        )
-                      }
-                    >
-                      delete
-                    </button>
-                  </td>
-                </tr>
-              ))}
+              {records.slice(0, 20).map((record) =>
+                editing === record.FullDate ? (
+                  <EditRow
+                    key={record.FullDate}
+                    record={record}
+                    settings={settings}
+                    onCancel={() => setEditing(null)}
+                    onError={(text) => setNotice({ kind: 'error', text })}
+                    onSave={(updated) => {
+                      setRecords((current) => upsert(current, updated));
+                      setEditing(null);
+                      setNotice({ kind: 'ok', text: `${updated.Date} corrected.` });
+                    }}
+                  />
+                ) : (
+                  <tr key={record.FullDate}>
+                    <td>{record.Date}</td>
+                    <td>{record.IsWfh ? 'WFH' : (record.Location ?? 'Office')}</td>
+                    <td>
+                      {record.IsWfh ? '—' : formatTimeOfDay(parseClock(record.EntryTime))}
+                      {record.ActualExitTime && (
+                        <span className="muted">
+                          {' → '}
+                          {formatTimeOfDay(parseClock(record.ActualExitTime))}
+                        </span>
+                      )}
+                    </td>
+                    <td>
+                      {formatDuration(
+                        record.IsWfh ? wfhCredit(record, settings) : loggedSeconds(record, now),
+                      )}
+                      {record.IsWfh && record.WfhHours == null && (
+                        <span className="muted"> (default)</span>
+                      )}
+                    </td>
+                    <td className="row-actions">
+                      <button className="link" onClick={() => setEditing(record.FullDate)}>
+                        edit
+                      </button>
+                      <button
+                        className="link"
+                        onClick={() =>
+                          setRecords((current) =>
+                            current.filter((r) => r.FullDate !== record.FullDate),
+                          )
+                        }
+                      >
+                        delete
+                      </button>
+                    </td>
+                  </tr>
+                ),
+              )}
             </tbody>
           </table>
         )}
