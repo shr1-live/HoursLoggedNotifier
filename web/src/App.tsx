@@ -1,6 +1,27 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  DayOfWeekChart,
+  PaceCard,
+  StatGrid,
+  WeeklyTrend,
+} from './components/Analytics';
+import { FocusView } from './components/FocusView';
 import { RingGauge } from './components/RingGauge';
 import { WeekChart } from './components/WeekChart';
+import {
+  byDayOfWeek,
+  goalStreak,
+  overallTotals,
+  punctuality,
+  weekPace,
+  weeklyTrend,
+} from './domain/analytics';
+import {
+  crossedThresholds,
+  notificationPermission,
+  notify,
+  requestNotificationPermission,
+} from './domain/alerts';
 import {
   loggedSeconds,
   todayStatus,
@@ -44,8 +65,37 @@ export default function App() {
   const totals = useMemo(() => weekTotals(records, settings, now), [records, settings, now]);
   const days = useMemo(() => weekBreakdown(records, settings, now), [records, settings, now]);
 
+  const trend = useMemo(() => weeklyTrend(records, settings, 6, now), [records, settings, now]);
+  const dayStats = useMemo(() => byDayOfWeek(records, settings, now), [records, settings, now]);
+  const punctual = useMemo(() => punctuality(records), [records]);
+  const overall = useMemo(() => overallTotals(records, settings, now), [records, settings, now]);
+  const streak = useMemo(() => goalStreak(records, settings, now), [records, settings, now]);
+  const pace = useMemo(
+    () => weekPace(totals.totalSeconds, settings, now),
+    [totals.totalSeconds, settings, now],
+  );
+
+  // The compact window renders the same data with a different layout.
+  const isFocus = typeof window !== 'undefined'
+    && new URLSearchParams(window.location.search).has('focus');
+
+  const [permission, setPermission] = useState(() => notificationPermission());
+
   const todayIso = isoDate(now);
   const todayRecord = records.find((r) => r.FullDate === todayIso);
+
+  useEffect(() => {
+    if (!settings.notifyOnThreshold || !today) return;
+    const percent = today.fraction * 100;
+    const crossed = crossedThresholds(todayIso, percent, settings.alertThresholds);
+    for (const threshold of crossed) {
+      notify(
+        `${threshold}% of today's shift`,
+        `${formatDuration(today.spentSeconds)} logged. 95% exit at ${formatTimeOfDay(parseClock(today.record.Exit95))}.`,
+      );
+    }
+  }, [today, todayIso, settings.notifyOnThreshold, settings.alertThresholds]);
+
 
   function handleParse() {
     const result = parseShiftBlock(paste, now);
@@ -107,6 +157,20 @@ export default function App() {
   const to95 = totals.officeMark95Seconds - totals.officeSeconds;
   const late = todayRecord && !todayRecord.IsWfh ? lateBySeconds(todayRecord) : 0;
 
+  // The popup shares all the state above, so it stays in step with the tab
+  // that opened it without any message passing.
+  if (isFocus) {
+    return (
+      <FocusView
+        today={today}
+        officeFraction={officeFraction}
+        officeLoggedSeconds={totals.officeSeconds}
+        officeTargetSeconds={totals.officeTargetSeconds}
+        clock={now.toLocaleTimeString('en-GB')}
+      />
+    );
+  }
+
   return (
     <div className="page">
       <header className="header">
@@ -119,6 +183,23 @@ export default function App() {
           </p>
         </div>
         <div className="header-actions">
+          <button
+            className="primary"
+            onClick={() =>
+              window.open(
+                '/?focus=1',
+                'hours-logged-focus',
+                'width=400,height=560,menubar=no,toolbar=no,location=no,status=no',
+              )
+            }
+          >
+            Focus window
+          </button>
+          {permission !== 'granted' && permission !== 'unsupported' && (
+            <button onClick={() => void requestNotificationPermission().then(setPermission)}>
+              Enable alerts
+            </button>
+          )}
           <button onClick={exportJson}>Export shifts.json</button>
           <button onClick={() => fileInput.current?.click()}>Import</button>
           <input
@@ -303,6 +384,16 @@ export default function App() {
             />
           </label>
           <label>
+            WFH days per week
+            <input
+              type="number"
+              min={0}
+              max={7}
+              value={settings.wfhDaysPerWeek}
+              onChange={(e) => setSettings({ ...settings, wfhDaysPerWeek: Number(e.target.value) })}
+            />
+          </label>
+          <label>
             Daily hour goal
             <input
               type="number"
@@ -312,6 +403,25 @@ export default function App() {
               value={settings.dailyGoalHours}
               onChange={(e) => setSettings({ ...settings, dailyGoalHours: Number(e.target.value) })}
             />
+          </label>
+          <label>
+            Default WFH hours
+            <input
+              type="number"
+              min={0}
+              max={24}
+              step={0.5}
+              value={settings.defaultWfhHours}
+              onChange={(e) => setSettings({ ...settings, defaultWfhHours: Number(e.target.value) })}
+            />
+          </label>
+          <label className="checkbox">
+            <input
+              type="checkbox"
+              checked={settings.notifyOnThreshold}
+              onChange={(e) => setSettings({ ...settings, notifyOnThreshold: e.target.checked })}
+            />
+            Alert me at {settings.alertThresholds.join('%, ')}% of the shift
           </label>
           <p className="muted small">
             Office target is {settings.requiredOfficeDays} × {settings.dailyGoalHours}h ={' '}
@@ -323,6 +433,35 @@ export default function App() {
             read-and-record side.
           </p>
         </article>
+      </section>
+
+      <section className="card">
+        <h2>Analytics</h2>
+        <StatGrid
+          totals={overall}
+          punctual={punctual}
+          streak={streak}
+          goalHours={settings.dailyGoalHours}
+        />
+      </section>
+
+      <section className="two-up">
+        <article className="card">
+          <h2>Last 6 weeks</h2>
+          <WeeklyTrend
+            points={trend}
+            targetHours={settings.dailyGoalHours * settings.workdaysPerWeek}
+          />
+        </article>
+        <article className="card">
+          <h2>Average by weekday</h2>
+          <DayOfWeekChart stats={dayStats} goalHours={settings.dailyGoalHours} />
+        </article>
+      </section>
+
+      <section className="card">
+        <h2>Pace this week</h2>
+        <PaceCard pace={pace} />
       </section>
 
       <section className="card">

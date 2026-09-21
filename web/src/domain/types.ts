@@ -23,14 +23,26 @@ export interface ShiftRecord {
 export interface Settings {
   /** Office days required each week. */
   requiredOfficeDays: number;
+  /** WFH days expected each week - the rest of the working week. */
+  wfhDaysPerWeek: number;
   /** Hours that count as a full day. */
   dailyGoalHours: number;
+  /** Default hours credited for a WFH day, before any per-day override. */
+  defaultWfhHours: number;
   /** Working days in a week, used for the weekly total. */
   workdaysPerWeek: number;
+  /** Alert when today's shift crosses these percentages. */
+  alertThresholds: number[];
+  /** Whether to raise a browser notification at those thresholds. */
+  notifyOnThreshold: boolean;
 }
 
 export const defaultSettings: Settings = {
   requiredOfficeDays: 3,
+  wfhDaysPerWeek: 2,
   dailyGoalHours: 9,
+  defaultWfhHours: 9,
   workdaysPerWeek: 5,
+  alertThresholds: [50, 75, 95, 100],
+  notifyOnThreshold: true,
 };

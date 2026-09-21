@@ -23,11 +23,11 @@ export function loggedSeconds(record: ShiftRecord, now = new Date()): number {
   return exit100 === null ? 0 : Math.max(0, exit100 - entry);
 }
 
-/** Seconds credited for a WFH day - the stored override, or the daily goal. */
+/** Seconds credited for a WFH day - the per-day override, or the WFH default. */
 export function wfhCredit(record: ShiftRecord, settings: Settings): number {
   return record.WfhHours != null
     ? hoursToSeconds(record.WfhHours)
-    : hoursToSeconds(settings.dailyGoalHours);
+    : hoursToSeconds(settings.defaultWfhHours ?? settings.dailyGoalHours);
 }
 
 export function weekRange(now = new Date()): { monday: Date; friday: Date } {
