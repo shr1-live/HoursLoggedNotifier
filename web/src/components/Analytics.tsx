@@ -12,15 +12,31 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
+import {
+  AlarmClock,
+  CalendarDays,
+  Clock,
+  Flame,
+  Timer,
+  TrendingUp,
+} from 'lucide-react';
+import { MotionStat } from './Motion';
 import type { DayOfWeekStat, Pace, Punctuality, Totals, WeekPoint } from '../domain/analytics';
 import { formatDuration, formatTimeOfDay } from '../domain/time';
 
-const AXIS = { fill: '#969ba5', fontSize: 12 };
+/** Reads a CSS variable so the charts follow the theme rather than fighting it. */
+function cssVar(name: string, fallback: string): string {
+  if (typeof window === 'undefined') return fallback;
+  const value = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  return value || fallback;
+}
+
+const AXIS = { fill: cssVar('--muted', '#969ba5'), fontSize: 12 };
 const TOOLTIP = {
-  background: '#20232b',
-  border: '1px solid #30343e',
+  background: cssVar('--panel', '#20232b'),
+  border: `1px solid ${cssVar('--line', '#30343e')}`,
   borderRadius: 8,
-  color: '#e6e8ec',
+  color: cssVar('--text', '#e6e8ec'),
 };
 
 function hours(value: number): string {
@@ -42,16 +58,18 @@ export function StatGrid({
   const onTimeRate = punctual.sample > 0 ? (punctual.onTime / punctual.sample) * 100 : 0;
 
   const stats = [
-    { label: 'Days logged', value: String(totals.daysLogged), note: `${totals.officeDays} office · ${totals.wfhDays} WFH` },
-    { label: 'Average day', value: hours(totals.averageDayHours), note: `goal ${goalHours}h` },
-    { label: 'Longest day', value: hours(totals.longestDayHours), note: totals.longestDayLabel },
-    { label: 'Goal streak', value: `${streak}`, note: streak === 1 ? 'day' : 'days' },
+    { icon: CalendarDays, label: 'Days logged', value: String(totals.daysLogged), note: `${totals.officeDays} office · ${totals.wfhDays} WFH` },
+    { icon: Clock, label: 'Average day', value: hours(totals.averageDayHours), note: `goal ${goalHours}h` },
+    { icon: Timer, label: 'Longest day', value: hours(totals.longestDayHours), note: totals.longestDayLabel },
+    { icon: Flame, label: 'Goal streak', value: `${streak}`, note: streak === 1 ? 'day' : 'days' },
     {
+      icon: TrendingUp,
       label: 'On time',
       value: punctual.sample > 0 ? `${Math.round(onTimeRate)}%` : '—',
       note: punctual.sample > 0 ? `${punctual.late} late of ${punctual.sample}` : 'no office days yet',
     },
     {
+      icon: AlarmClock,
       label: 'Average entry',
       value: punctual.averageEntry !== null ? formatTimeOfDay(punctual.averageEntry).replace(':00 ', ' ') : '—',
       note: punctual.late > 0 ? `avg ${formatDuration(punctual.averageLateness)} late` : 'never late',
@@ -60,12 +78,15 @@ export function StatGrid({
 
   return (
     <div className="stat-grid">
-      {stats.map((s) => (
-        <div key={s.label} className="stat">
-          <span className="stat-label">{s.label}</span>
+      {stats.map((s, i) => (
+        <MotionStat key={s.label} index={i}>
+          <span className="stat-label">
+            <s.icon size={13} strokeWidth={2} aria-hidden="true" />
+            {s.label}
+          </span>
           <span className="stat-value">{s.value}</span>
           <span className="stat-note">{s.note}</span>
-        </div>
+        </MotionStat>
       ))}
     </div>
   );
@@ -77,8 +98,8 @@ export function WeeklyTrend({ points, targetHours }: { points: WeekPoint[]; targ
     <div style={{ width: '100%', height: 260 }}>
       <ResponsiveContainer>
         <BarChart data={points} margin={{ top: 16, right: 8, bottom: 4, left: -18 }}>
-          <CartesianGrid stroke="#282c35" vertical={false} />
-          <XAxis dataKey="label" tick={AXIS} axisLine={{ stroke: '#30343e' }} tickLine={false} />
+          <CartesianGrid stroke={cssVar('--grid', '#282c35')} vertical={false} />
+          <XAxis dataKey="label" tick={AXIS} axisLine={{ stroke: cssVar('--line', '#30343e') }} tickLine={false} />
           <YAxis tick={AXIS} axisLine={false} tickLine={false} tickFormatter={(v: number) => `${v}h`} />
           <Tooltip
             cursor={{ fill: 'rgba(255,255,255,0.04)' }}
@@ -92,7 +113,7 @@ export function WeeklyTrend({ points, targetHours }: { points: WeekPoint[]; targ
             strokeDasharray="4 4"
             label={{ value: `${targetHours}h target`, fill: '#969ba5', fontSize: 11, position: 'right' }}
           />
-          <Bar dataKey="officeHours" name="Office" stackId="w" fill="#4ca0d2" radius={[0, 0, 0, 0]} maxBarSize={46} />
+          <Bar dataKey="officeHours" name="Office" stackId="w" fill={cssVar('--accent', '#4ca0d2')} radius={[0, 0, 0, 0]} maxBarSize={46} />
           <Bar dataKey="wfhHours" name="WFH" stackId="w" fill="#788cdc" radius={[6, 6, 0, 0]} maxBarSize={46} />
         </BarChart>
       </ResponsiveContainer>
@@ -106,8 +127,8 @@ export function DayOfWeekChart({ stats, goalHours }: { stats: DayOfWeekStat[]; g
     <div style={{ width: '100%', height: 220 }}>
       <ResponsiveContainer>
         <BarChart data={stats} margin={{ top: 16, right: 8, bottom: 4, left: -18 }}>
-          <CartesianGrid stroke="#282c35" vertical={false} />
-          <XAxis dataKey="label" tick={AXIS} axisLine={{ stroke: '#30343e' }} tickLine={false} />
+          <CartesianGrid stroke={cssVar('--grid', '#282c35')} vertical={false} />
+          <XAxis dataKey="label" tick={AXIS} axisLine={{ stroke: cssVar('--line', '#30343e') }} tickLine={false} />
           <YAxis tick={AXIS} axisLine={false} tickLine={false} tickFormatter={(v: number) => `${v}h`} />
           <Tooltip
             cursor={{ fill: 'rgba(255,255,255,0.04)' }}
