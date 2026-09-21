@@ -5,8 +5,10 @@ import {
   StatGrid,
   WeeklyTrend,
 } from './components/Analytics';
+import { createPortal } from 'react-dom';
 import { FocusView } from './components/FocusView';
 import { HoursMinutesInput } from './components/HoursMinutesInput';
+import { MiniWidget } from './components/MiniWidget';
 import { RingGauge } from './components/RingGauge';
 import { WeekChart } from './components/WeekChart';
 import {
@@ -42,6 +44,7 @@ import {
   saveShifts,
   upsert,
 } from './domain/storage';
+import { openPipContainer, pipSupported } from './domain/pip';
 import {
   applyTheme,
   loadTheme,
@@ -88,11 +91,15 @@ export default function App() {
   );
 
   // The compact window renders the same data with a different layout.
-  const isFocus = typeof window !== 'undefined'
-    && new URLSearchParams(window.location.search).has('focus');
+  const params = typeof window !== 'undefined'
+    ? new URLSearchParams(window.location.search)
+    : new URLSearchParams();
+  const isFocus = params.has('focus');
+  const isMini = params.has('mini');
 
   const [permission, setPermission] = useState(() => notificationPermission());
   const [theme, setTheme] = useState<Theme>(() => loadTheme());
+  const [pip, setPip] = useState<{ window: Window; container: HTMLElement } | null>(null);
   const [persistent, setPersistent] = useState(false);
 
   useEffect(() => {
@@ -164,6 +171,30 @@ export default function App() {
     });
   }
 
+
+  async function openMiniWidget() {
+    if (pip) {
+      pip.window.focus();
+      return;
+    }
+
+    const opened = await openPipContainer({ width: 240, height: 250 });
+    if (opened) {
+      // Clear our reference when the user closes the window.
+      opened.window.addEventListener('pagehide', () => setPip(null));
+      setPip(opened);
+      return;
+    }
+
+    // No picture-in-picture support: a small popup is the next best thing,
+    // though it will not stay above other windows.
+    window.open(
+      '/?mini=1',
+      'hours-logged-mini',
+      'width=250,height=280,menubar=no,toolbar=no,location=no,status=no',
+    );
+  }
+
   function exportJson() {
     const blob = new Blob([JSON.stringify(records, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -194,6 +225,16 @@ export default function App() {
 
   // The popup shares all the state above, so it stays in step with the tab
   // that opened it without any message passing.
+  if (isMini) {
+    return (
+      <MiniWidget
+        fraction={today ? today.fraction : null}
+        loggedSeconds={today ? today.spentSeconds : 0}
+        officeFraction={officeFraction}
+      />
+    );
+  }
+
   if (isFocus) {
     return (
       <FocusView
@@ -208,6 +249,17 @@ export default function App() {
 
   return (
     <div className="page">
+      {/* Rendered into the picture-in-picture document, so it updates with
+          the same state rather than polling or posting messages. */}
+      {pip
+        && createPortal(
+          <MiniWidget
+            fraction={today ? today.fraction : null}
+            loggedSeconds={today ? today.spentSeconds : 0}
+            officeFraction={officeFraction}
+          />,
+          pip.container,
+        )}
       <header className="header">
         <div>
           <h1>Hours Logged</h1>
@@ -241,6 +293,9 @@ export default function App() {
             }
           >
             Focus window
+          </button>
+          <button onClick={() => void openMiniWidget()}>
+            {pipSupported() ? 'Mini widget' : 'Mini window'}
           </button>
           {permission !== 'granted' && permission !== 'unsupported' && (
             <button onClick={() => void requestNotificationPermission().then(setPermission)}>
