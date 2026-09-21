@@ -1,0 +1,4 @@
+# Single-page app: any unknown path must serve index.html rather than 404,
+# or a deep link and a hard refresh both break.
+# Cloudflare Pages and Netlify both read this file from the build output.
+/*    /index.html   200
