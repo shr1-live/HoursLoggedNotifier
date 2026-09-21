@@ -6,5 +6,8 @@
     "build": "npm --prefix web ci && npm --prefix web run build",
     "dev": "npm --prefix web run dev",
     "preview": "npm --prefix web run preview"
+  },
+  "devDependencies": {
+    "wrangler": "^4.136.0"
   }
 }
