@@ -108,17 +108,24 @@ public static class ShiftCalculationService
 
     public static bool IsToday(ShiftRecord shift) => shift.FullDate == Today;
 
+    /// <summary>
+    /// Time on the clock. Once an exit is recorded the day is finished, so the
+    /// total freezes there rather than carrying on counting.
+    /// </summary>
     public static TimeSpan GetTimeSpent(ShiftRecord shift)
     {
-        var now = TimeOnly.FromDateTime(DateTime.Now);
-        return now.ToTimeSpan() - shift.EntryTime.ToTimeSpan();
+        var upTo = shift.ActualExitTime ?? TimeOnly.FromDateTime(DateTime.Now);
+        return upTo.ToTimeSpan() - shift.EntryTime.ToTimeSpan();
     }
 
     public static TimeSpan GetTimeLeft(ShiftRecord shift, TimeOnly target)
     {
-        var now = TimeOnly.FromDateTime(DateTime.Now);
-        return target.ToTimeSpan() - now.ToTimeSpan();
+        var from = shift.ActualExitTime ?? TimeOnly.FromDateTime(DateTime.Now);
+        return target.ToTimeSpan() - from.ToTimeSpan();
     }
+
+    /// <summary>True once the day has been signed off with an exit time.</summary>
+    public static bool IsClockedOut(ShiftRecord shift) => shift.ActualExitTime.HasValue;
 
     public static TimeSpan GetActualHoursWorked(ShiftRecord shift) =>
         shift.ActualExitTime.HasValue

@@ -20,7 +20,7 @@ StartReminderLoop(storage, emailService, notifier);
 var running = true;
 while (running)
 {
-    Console.WriteLine("Paste your shift + biometric block below (or type: ui / widget / bar / vbar / today / history / week / wfh / interval / testemail / testnotify / exit)");
+    Console.WriteLine("Paste your shift + biometric block below (or type: ui / logout / widget / bar / vbar / today / history / week / wfh / interval / testemail / testnotify / exit)");
     Console.Write("> ");
     var firstLine = Console.ReadLine();
     if (firstLine is null) break;
@@ -70,6 +70,11 @@ while (running)
         case "float":
             ShowFloatingWidget(storage, emailService, notifier);
             continue;
+        case "logout":
+        case "out":
+        case "signoff":
+            LogOut(storage, emailService, argument);
+            continue;
         case "bar":
             ShowFloatingBar(storage, emailService, notifier, vertical: false);
             continue;
@@ -107,6 +112,9 @@ static void SendReminderIfDue(ShiftStorageService storage, EmailService emailSer
 {
     var shift = storage.GetToday();
     if (shift is null || shift.IsWfh) return;
+
+    // Signed off for the day - nothing left to remind about.
+    if (ShiftCalculationService.IsClockedOut(shift)) return;
 
     var spent = ShiftCalculationService.GetTimeSpent(shift);
 
@@ -607,6 +615,64 @@ static void ShowFloatingWidget(ShiftStorageService storage, EmailService emailSe
 
     Console.WriteLine("\nThis platform has no floating widget. Showing the console panel instead.");
     ShowDashboard(storage, emailService, notifier);
+}
+
+/// <summary>
+/// Signs the day off. "logout" records the current time; "logout 7:05 PM"
+/// records a specific one, for when you remember afterwards.
+/// </summary>
+static void LogOut(ShiftStorageService storage, EmailService emailService, string? timeArgument)
+{
+    var shift = storage.GetToday();
+
+    if (shift is null)
+    {
+        Console.WriteLine("\nNo shift recorded today, so there is nothing to sign off.\n");
+        return;
+    }
+
+    if (shift.IsWfh)
+    {
+        Console.WriteLine($"\n{shift.Date} is a WFH day - set its hours with 'wfh 8.5' instead.\n");
+        return;
+    }
+
+    TimeOnly exit;
+    if (string.IsNullOrWhiteSpace(timeArgument))
+    {
+        exit = TimeOnly.FromDateTime(DateTime.Now);
+    }
+    else if (!TimeOnly.TryParse(timeArgument, out exit))
+    {
+        Console.WriteLine($"\nCouldn't read '{timeArgument}' as a time. Try: logout 7:05 PM\n");
+        return;
+    }
+
+    if (exit.ToTimeSpan() < shift.EntryTime.ToTimeSpan())
+    {
+        Console.WriteLine($"\nThat is before your entry at {shift.EntryTime:h:mm:ss tt}.\n");
+        return;
+    }
+
+    var reopening = shift.ActualExitTime.HasValue;
+    shift.ActualExitTime = exit;
+    storage.Save(shift);
+
+    var worked = ShiftCalculationService.GetActualHoursWorked(shift);
+    Console.WriteLine(reopening
+        ? $"\nExit time changed to {exit:h:mm:ss tt} - {ShiftCalculationService.FormatDuration(worked)} worked."
+        : $"\nSigned off at {exit:h:mm:ss tt} - {ShiftCalculationService.FormatDuration(worked)} worked.");
+
+    if (worked < emailService.DailyHourGoal)
+    {
+        var shortBy = emailService.DailyHourGoal - worked;
+        Console.WriteLine($"That is {ShiftCalculationService.FormatDuration(shortBy)} under the {ShiftCalculationService.FormatDuration(emailService.DailyHourGoal)} goal.");
+    }
+
+    var all = storage.LoadAll();
+    Console.WriteLine(AttendanceReportService.FormatOfficeTargetSummary(all, emailService.RequiredOfficeDaysPerWeek, emailService.DailyHourGoal));
+    Console.WriteLine(AttendanceReportService.FormatWeeklyHoursSummary(all, emailService.DailyHourGoal));
+    Console.WriteLine("Reminders for today have stopped.\n");
 }
 
 /// <summary>Opens the thin always-on-top progress line.</summary>

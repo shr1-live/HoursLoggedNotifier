@@ -150,6 +150,8 @@ export interface TodayStatus {
   left100Seconds: number;
   /** 0..1 through the scheduled shift. */
   fraction: number;
+  /** True once the day has been signed off, so the clock has stopped. */
+  clockedOut: boolean;
 }
 
 export function todayStatus(records: ShiftRecord[], now = new Date()): TodayStatus | null {
@@ -161,15 +163,20 @@ export function todayStatus(records: ShiftRecord[], now = new Date()): TodayStat
   const exit100 = parseClock(record.Exit100);
   if (entry === null || exit95 === null || exit100 === null) return null;
 
-  const nowSeconds = secondsSinceMidnight(now);
-  const spentSeconds = Math.max(0, nowSeconds - entry);
+  // Once an exit is recorded the day is finished, so the clock stops there
+  // rather than carrying on counting into the evening.
+  const actualExit = parseClock(record.ActualExitTime ?? undefined);
+  const upTo = actualExit ?? secondsSinceMidnight(now);
+
+  const spentSeconds = Math.max(0, upTo - entry);
   const total = Math.max(1, exit100 - entry);
 
   return {
     record,
     spentSeconds,
-    left95Seconds: Math.max(0, exit95 - nowSeconds),
-    left100Seconds: Math.max(0, exit100 - nowSeconds),
+    left95Seconds: Math.max(0, exit95 - upTo),
+    left100Seconds: Math.max(0, exit100 - upTo),
     fraction: Math.min(1, spentSeconds / total),
+    clockedOut: actualExit !== null,
   };
 }

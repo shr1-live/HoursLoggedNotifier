@@ -517,3 +517,14 @@ button, input, textarea { transition: background-color 0.18s ease, border-color 
 
 .vbar-sub { font-size: 0.66rem; color: var(--muted); line-height: 1.35; }
 .vbar-sub strong { color: var(--text); font-weight: 600; }
+
+.signoff { margin-top: 14px; width: 100%; justify-content: center; }
+.signoff input[type='time'] {
+  width: auto;
+  background: var(--panel-soft);
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 7px 9px;
+  font-family: inherit;
+}

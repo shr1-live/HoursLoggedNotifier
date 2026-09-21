@@ -195,6 +195,49 @@ export default function App() {
     );
   }
 
+
+  /**
+   * Signs the day off at the given time, or now. Recording an exit stops the
+   * clock everywhere, since every figure derives from the same record.
+   */
+  function logOut(at?: string) {
+    const record = todayRecord;
+    if (!record || record.IsWfh) {
+      setNotice({ kind: 'error', text: 'No office shift running today.' });
+      return;
+    }
+
+    const exit = at ?? new Date().toTimeString().slice(0, 8);
+    const entry = parseClock(record.EntryTime);
+    const leaving = parseClock(exit);
+
+    if (leaving === null) {
+      setNotice({ kind: 'error', text: `Couldn't read "${exit}" as a time.` });
+      return;
+    }
+    if (entry !== null && leaving < entry) {
+      setNotice({
+        kind: 'error',
+        text: `That is before your entry at ${formatTimeOfDay(entry)}.`,
+      });
+      return;
+    }
+
+    setRecords((current) => upsert(current, { ...record, ActualExitTime: exit }));
+    setNotice({
+      kind: 'ok',
+      text: `Signed off at ${formatTimeOfDay(leaving)} - ${formatDuration(Math.max(0, leaving - (entry ?? leaving)))} worked.`,
+    });
+  }
+
+  /** Reopens the day, for a sign-off entered by mistake. */
+  function reopenDay() {
+    const record = todayRecord;
+    if (!record) return;
+    setRecords((current) => upsert(current, { ...record, ActualExitTime: null }));
+    setNotice({ kind: 'ok', text: 'Day reopened - the clock is running again.' });
+  }
+
   function exportJson() {
     const blob = new Blob([JSON.stringify(records, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -423,6 +466,32 @@ export default function App() {
                   </div>
                 )}
               </dl>
+
+              {today.clockedOut ? (
+                <div className="row signoff">
+                  <span className="good">
+                    Signed off at {formatTimeOfDay(parseClock(today.record.ActualExitTime ?? undefined))}
+                  </span>
+                  <button className="link" onClick={reopenDay}>
+                    reopen
+                  </button>
+                </div>
+              ) : (
+                <div className="row signoff">
+                  <button className="primary" onClick={() => logOut()}>
+                    Log out now
+                  </button>
+                  <input
+                    type="time"
+                    step={1}
+                    aria-label="exit time"
+                    onChange={(e) => {
+                      // A blank value means the field was cleared, not a sign-off.
+                      if (e.target.value) logOut(e.target.value.length === 5 ? `${e.target.value}:00` : e.target.value);
+                    }}
+                  />
+                </div>
+              )}
             </>
           ) : todayRecord?.IsWfh ? (
             <p className="muted pad">
