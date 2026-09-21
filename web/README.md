@@ -23,7 +23,7 @@ npm run preview   # serves the built output
 
 ## Deploying to Netlify
 
-`netlify.toml` already sets the base directory, build command and publish
+The root `netlify.toml` already sets the base directory, build command and publish
 directory, plus SPA redirects and cache headers. Connect the repository in
 Netlify and it needs no further configuration — or run `netlify deploy --prod`
 from this folder.
