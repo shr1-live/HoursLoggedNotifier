@@ -20,7 +20,7 @@ StartReminderLoop(storage, emailService, notifier);
 var running = true;
 while (running)
 {
-    Console.WriteLine("Paste your shift + biometric block below (or type: ui / logout / widget / bar / vbar / today / history / week / wfh / interval / testemail / testnotify / exit)");
+    Console.WriteLine("Paste your shift + biometric block below (or type: ui / logout / edit / widget / bar / vbar / today / history / week / wfh / interval / testemail / testnotify / exit)");
     Console.Write("> ");
     var firstLine = Console.ReadLine();
     if (firstLine is null) break;
@@ -74,6 +74,11 @@ while (running)
         case "out":
         case "signoff":
             LogOut(storage, emailService, argument);
+            continue;
+        case "edit":
+        case "correct":
+        case "fix":
+            EditDay(storage, emailService, argument);
             continue;
         case "bar":
             ShowFloatingBar(storage, emailService, notifier, vertical: false);
@@ -673,6 +678,149 @@ static void LogOut(ShiftStorageService storage, EmailService emailService, strin
     Console.WriteLine(AttendanceReportService.FormatOfficeTargetSummary(all, emailService.RequiredOfficeDaysPerWeek, emailService.DailyHourGoal));
     Console.WriteLine(AttendanceReportService.FormatWeeklyHoursSummary(all, emailService.DailyHourGoal));
     Console.WriteLine("Reminders for today have stopped.\n");
+}
+
+/// <summary>
+/// Corrects a recorded day. Usage:
+///   edit entry 10:15 AM        - today's entry time
+///   edit exit 7:05 PM          - today's exit time ("edit exit -" clears it)
+///   edit 20 Sep entry 10:15 AM - a specific day
+/// </summary>
+static void EditDay(ShiftStorageService storage, EmailService emailService, string? argument)
+{
+    if (string.IsNullOrWhiteSpace(argument))
+    {
+        Console.WriteLine("\nCorrect a day:");
+        Console.WriteLine("  edit entry 10:15 AM          today's entry time");
+        Console.WriteLine("  edit exit 7:05 PM            today's exit time");
+        Console.WriteLine("  edit exit -                  clear the exit, reopening the day");
+        Console.WriteLine("  edit hours 8:30              a WFH day's hours");
+        Console.WriteLine("  edit 20 Sep entry 10:15 AM   a specific day\n");
+        return;
+    }
+
+    var words = argument.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+
+    // A leading "20 Sep" selects a day; otherwise today is assumed.
+    var target = ShiftCalculationService.Today;
+    var index = 0;
+    if (words.Length >= 2 && ShiftCalculationService.TryResolveFullDate($"{words[0]} {words[1]}", out var parsedDate))
+    {
+        target = parsedDate;
+        index = 2;
+    }
+
+    if (words.Length < index + 2)
+    {
+        Console.WriteLine("\nTell me what to change, e.g. 'edit entry 10:15 AM'.\n");
+        return;
+    }
+
+    var field = words[index].ToLowerInvariant();
+    var value = string.Join(' ', words.Skip(index + 1));
+
+    var shift = storage.GetByDate(target);
+    if (shift is null)
+    {
+        Console.WriteLine($"\nNothing recorded for {ShiftCalculationService.FormatDisplayDate(target)}.\n");
+        return;
+    }
+
+    switch (field)
+    {
+        case "entry":
+            if (!TimeOnly.TryParse(value, out var entry))
+            {
+                Console.WriteLine($"\nCouldn't read '{value}' as a time.\n");
+                return;
+            }
+            // The exit times are derived from entry, so they move with it.
+            var span = shift.Exit100.ToTimeSpan() - shift.EntryTime.ToTimeSpan();
+            shift.EntryTime = entry;
+            shift.Exit95 = entry.Add(TimeSpan.FromTicks((long)(span.Ticks * 0.95)));
+            shift.Exit100 = entry.Add(span);
+            break;
+
+        case "exit":
+            if (value == "-" || value.Equals("none", StringComparison.OrdinalIgnoreCase))
+            {
+                shift.ActualExitTime = null;
+                break;
+            }
+            if (!TimeOnly.TryParse(value, out var exit))
+            {
+                Console.WriteLine($"\nCouldn't read '{value}' as a time.\n");
+                return;
+            }
+            if (exit.ToTimeSpan() < shift.EntryTime.ToTimeSpan())
+            {
+                Console.WriteLine($"\nThat is before the entry at {shift.EntryTime:h:mm:ss tt}.\n");
+                return;
+            }
+            shift.ActualExitTime = exit;
+            break;
+
+        case "hours":
+            if (!shift.IsWfh)
+            {
+                Console.WriteLine("\n'hours' only applies to a WFH day - correct an office day with 'edit exit'.\n");
+                return;
+            }
+            if (!TryParseHours(value, out var hours))
+            {
+                Console.WriteLine($"\nCouldn't read '{value}' as hours. Try 8.5 or 8:30.\n");
+                return;
+            }
+            shift.WfhHours = hours;
+            break;
+
+        default:
+            Console.WriteLine($"\nDon't know how to change '{field}'. Use entry, exit or hours.\n");
+            return;
+    }
+
+    storage.Save(shift);
+
+    Console.WriteLine($"\n{shift.Date} corrected.");
+    if (shift.IsWfh)
+    {
+        Console.WriteLine($"WFH hours: {ShiftCalculationService.FormatDuration(AttendanceReportService.GetWfhCredit(shift, emailService.DailyHourGoal))}");
+    }
+    else
+    {
+        Console.WriteLine($"Entry {shift.EntryTime:h:mm:ss tt}, 95% exit {shift.Exit95:h:mm:ss tt}"
+            + (shift.ActualExitTime.HasValue ? $", signed off {shift.ActualExitTime:h:mm:ss tt}" : ", still running"));
+        Console.WriteLine($"Hours: {ShiftCalculationService.FormatDuration(ShiftCalculationService.GetTimeSpent(shift))}");
+    }
+
+    var all = storage.LoadAll();
+    Console.WriteLine(AttendanceReportService.FormatOfficeTargetSummary(all, emailService.RequiredOfficeDaysPerWeek, emailService.DailyHourGoal));
+    Console.WriteLine(AttendanceReportService.FormatWeeklyHoursSummary(all, emailService.DailyHourGoal));
+    Console.WriteLine();
+}
+
+/// <summary>Accepts "8.5" or "8:30" as a number of hours.</summary>
+static bool TryParseHours(string text, out double hours)
+{
+    hours = 0;
+
+    if (text.Contains(':'))
+    {
+        var parts = text.Split(':');
+        if (parts.Length == 2
+            && int.TryParse(parts[0], out var h)
+            && int.TryParse(parts[1], out var m)
+            && m is >= 0 and < 60)
+        {
+            hours = h + m / 60d;
+            return hours is > 0 and <= 24;
+        }
+        return false;
+    }
+
+    return double.TryParse(text, System.Globalization.NumberStyles.Float,
+               System.Globalization.CultureInfo.InvariantCulture, out hours)
+           && hours is > 0 and <= 24;
 }
 
 /// <summary>Opens the thin always-on-top progress line.</summary>

@@ -528,3 +528,29 @@ button, input, textarea { transition: background-color 0.18s ease, border-color 
   padding: 7px 9px;
   font-family: inherit;
 }
+
+.row-actions { display: flex; gap: 4px; justify-content: flex-end; }
+.edit-row td { background: var(--panel-soft); }
+.edit-fields {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 6px 0;
+}
+.edit-fields label.inline {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  font-size: 0.8rem;
+}
+.edit-fields input[type='time'] {
+  width: auto;
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 6px 8px;
+  font-family: inherit;
+}
