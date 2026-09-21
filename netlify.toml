@@ -1,8 +1,10 @@
-# Netlify builds from this folder, so "base" keeps npm in web/ rather than the
-# repository root, which holds the .NET app.
+# This file must live at the repository root - Netlify only reads netlify.toml
+# from there. "base" then moves the build into web/, so npm runs against the
+# React app rather than the repository root, which holds the .NET project.
+# "publish" is resolved relative to base, so it means web/dist.
 [build]
   base = "web"
-  command = "npm run build"
+  command = "npm ci && npm run build"
   publish = "dist"
 
 [build.environment]
