@@ -31,9 +31,12 @@ import {
 } from './domain/attendance';
 import { lateBySeconds, parseShiftBlock } from './domain/parseShift';
 import {
+  lastExportedAt,
   loadSettings,
   loadShifts,
+  markExported,
   mergeImported,
+  requestPersistentStorage,
   saveSettings,
   saveShifts,
   upsert,
@@ -80,6 +83,14 @@ export default function App() {
     && new URLSearchParams(window.location.search).has('focus');
 
   const [permission, setPermission] = useState(() => notificationPermission());
+  const [persistent, setPersistent] = useState(false);
+  const [lastExport, setLastExport] = useState<Date | null>(() => lastExportedAt());
+
+  // Ask once on load; browsers grant this based on engagement, so it may take
+  // a few visits before it sticks.
+  useEffect(() => {
+    void requestPersistentStorage().then(setPersistent);
+  }, []);
 
   const todayIso = isoDate(now);
   const todayRecord = records.find((r) => r.FullDate === todayIso);
@@ -139,6 +150,8 @@ export default function App() {
     link.download = 'shifts.json';
     link.click();
     URL.revokeObjectURL(url);
+    markExported();
+    setLastExport(new Date());
   }
 
   async function importJson(file: File) {
@@ -215,6 +228,22 @@ export default function App() {
           />
         </div>
       </header>
+
+      {records.length > 0 && (() => {
+        const days = lastExport
+          ? Math.floor((now.getTime() - lastExport.getTime()) / 86400000)
+          : null;
+        const stale = days === null || days >= 7;
+        if (!stale && persistent) return null;
+        return (
+          <div className={`notice ${stale ? 'error' : 'ok'}`} role="status">
+            {stale
+              ? `History has ${days === null ? 'never been' : `not been exported for ${days} day(s)`} backed up. Browser storage can be cleared - export a copy.`
+              : 'Browser storage is not marked persistent yet, so it could be evicted. Export a copy now and then.'}
+            <button className="link" onClick={exportJson}>export now</button>
+          </div>
+        );
+      })()}
 
       {notice && (
         <div className={`notice ${notice.kind}`} role="status">

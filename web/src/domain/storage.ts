@@ -10,6 +10,50 @@ import { defaultSettings } from './types';
 
 const SHIFTS_KEY = 'hln.shifts';
 const SETTINGS_KEY = 'hln.settings';
+const BACKUP_KEY = 'hln.lastExport';
+
+/**
+ * Asks the browser to keep this origin's data rather than treating it as
+ * evictable cache. Without it, Safari clears script-writable storage after
+ * about seven days of not visiting, and any browser may evict under storage
+ * pressure. Granting is at the browser's discretion and usually depends on
+ * engagement, so this is a request rather than a guarantee.
+ */
+export async function requestPersistentStorage(): Promise<boolean> {
+  try {
+    if (!navigator.storage?.persist) return false;
+    if (await navigator.storage.persisted()) return true;
+    return await navigator.storage.persist();
+  } catch {
+    return false;
+  }
+}
+
+export async function storageIsPersistent(): Promise<boolean> {
+  try {
+    return (await navigator.storage?.persisted?.()) ?? false;
+  } catch {
+    return false;
+  }
+}
+
+/** When the history was last exported, so the UI can nag before data is lost. */
+export function lastExportedAt(): Date | null {
+  try {
+    const raw = localStorage.getItem(BACKUP_KEY);
+    return raw ? new Date(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+export function markExported(when = new Date()): void {
+  try {
+    localStorage.setItem(BACKUP_KEY, when.toISOString());
+  } catch {
+    // Not fatal.
+  }
+}
 
 export function loadShifts(): ShiftRecord[] {
   try {
