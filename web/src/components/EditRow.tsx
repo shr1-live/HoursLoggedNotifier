@@ -43,11 +43,11 @@ export function EditRow({ record, settings, onSave, onCancel, onError }: EditRow
     // correction for a sign-off entered by mistake.
     const exitSeconds = exit ? parseClock(exit) : null;
     if (exit && exitSeconds === null) {
-      onError('Exit time is not valid.');
+      onError('Logout time is not valid.');
       return;
     }
     if (exitSeconds !== null && exitSeconds < entrySeconds) {
-      onError('The exit time is before the entry time.');
+      onError('The logout time is before the entry time.');
       return;
     }
 
@@ -81,7 +81,7 @@ export function EditRow({ record, settings, onSave, onCancel, onError }: EditRow
                 />
               </label>
               <label className="inline">
-                Exit
+                Logout
                 <input
                   type="time"
                   step={1}
@@ -89,7 +89,7 @@ export function EditRow({ record, settings, onSave, onCancel, onError }: EditRow
                   onChange={(e) => setExit(e.target.value ? normaliseTime(e.target.value) : '')}
                 />
               </label>
-              <span className="muted small">leave Exit blank to reopen the day</span>
+              <span className="muted small">leave Logout blank to reopen the day</span>
             </>
           )}
 

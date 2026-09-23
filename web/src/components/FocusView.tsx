@@ -47,14 +47,14 @@ export function FocusView({
 
       <div className="focus-rows">
         <div>
-          <span className="muted">95% exit</span>
+          <span className="muted">95% logout</span>
           <span>
             {formatTimeOfDay(parseClock(today.record.Exit95))}
             {today.left95Seconds > 0 ? ` · ${formatDuration(today.left95Seconds)} left` : ' · reached'}
           </span>
         </div>
         <div>
-          <span className="muted">100% exit</span>
+          <span className="muted">100% logout</span>
           <span>
             {formatTimeOfDay(parseClock(today.record.Exit100))}
             {today.left100Seconds > 0 ? ` · ${formatDuration(today.left100Seconds)} left` : ' · reached'}

@@ -157,14 +157,16 @@ export default function App() {
     for (const threshold of crossed) {
       notify(
         `${threshold}% of today's shift`,
-        `${formatDuration(today.spentSeconds)} logged. 95% exit at ${formatTimeOfDay(parseClock(today.record.Exit95))}.`,
+        `${formatDuration(today.spentSeconds)} logged. 95% logout at ${formatTimeOfDay(parseClock(today.record.Exit95))}.`,
       );
     }
   }, [today, todayIso, settings.notifyOnThreshold, settings.alertThresholds]);
 
 
   function handleParse(asWfh = false) {
-    const result = parseShiftBlock(paste, now, asWfh);
+    const result = parseShiftBlock(paste, now, asWfh, {
+      defaultShiftHours: settings.dailyGoalHours,
+    });
     if (result.error || !result.record) {
       setNotice({ kind: 'error', text: result.error ?? 'Could not read that block.' });
       return;
@@ -295,7 +297,7 @@ export default function App() {
     ? totals.officeSeconds / totals.officeTargetSeconds
     : 0;
   const to95 = totals.officeMark95Seconds - totals.officeSeconds;
-  const late = todayRecord && !todayRecord.IsWfh ? lateBySeconds(todayRecord) : 0;
+  const late = todayRecord && !todayRecord.IsWfh ? lateBySeconds(todayRecord) : null;
 
   // The popup shares all the state above, so it stays in step with the tab
   // that opened it without any message passing.
@@ -464,7 +466,7 @@ export default function App() {
               <RingGauge
                 fraction={today.fraction}
                 value={formatDuration(today.spentSeconds)}
-                caption={today.reachedGoal ? 'you can leave' : 'until the 95% exit'}
+                caption={today.reachedGoal ? 'you can leave' : 'until the 95% logout'}
                 goodThreshold={1}
               />
               <dl className="facts">
@@ -473,7 +475,7 @@ export default function App() {
                   <dd>{formatTimeOfDay(parseClock(today.record.EntryTime))}</dd>
                 </div>
                 <div>
-                  <dt>95% exit</dt>
+                  <dt>95% logout</dt>
                   <dd>
                     {formatTimeOfDay(parseClock(today.record.Exit95))}
                     <span className="muted">
@@ -484,7 +486,7 @@ export default function App() {
                   </dd>
                 </div>
                 <div>
-                  <dt>100% exit</dt>
+                  <dt>100% logout</dt>
                   <dd>
                     {formatTimeOfDay(parseClock(today.record.Exit100))}
                     <span className="muted">
@@ -496,8 +498,12 @@ export default function App() {
                 </div>
                 <div>
                   <dt>Status</dt>
-                  <dd className={late > 0 ? 'warn' : 'good'}>
-                    {late > 0 ? `${formatDuration(late, true)} LATE` : 'On time'}
+                  <dd className={late === null ? 'muted' : late > 0 ? 'warn' : 'good'}>
+                    {late === null
+                      ? 'no roster recorded'
+                      : late > 0
+                        ? `${formatDuration(late, true)} LATE`
+                        : 'On time'}
                   </dd>
                 </div>
                 {today.record.Location && (
@@ -531,7 +537,7 @@ export default function App() {
                   <input
                     type="time"
                     step={1}
-                    aria-label="exit time"
+                    aria-label="logout time"
                     onChange={(e) => {
                       // A blank value means the field was cleared, not a sign-off.
                       if (e.target.value) logOut(e.target.value.length === 5 ? `${e.target.value}:00` : e.target.value);

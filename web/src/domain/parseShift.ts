@@ -25,9 +25,14 @@ export interface ParseResult {
   error?: string;
 }
 
-/** "10:00 AM" / "7:00 PM" / "10:24:52 AM" -> seconds since midnight. */
+/**
+ * "10:00 AM" / "7:00 PM" / "10:24:52 AM" / "10.23" -> seconds since midnight.
+ *
+ * A dot separates as well as a colon, since that is how the time often gets
+ * typed by hand. With no am/pm the value is read as a 24-hour clock.
+ */
 function parseTimeToken(token: string): number | null {
-  const match = token.trim().match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?\s*([AaPp][Mm])?$/);
+  const match = token.trim().match(/^(\d{1,2})[:.](\d{2})(?:[:.](\d{2}))?\s*([AaPp][Mm])?$/);
   if (!match) return null;
 
   let hours = Number(match[1]);
@@ -61,7 +66,17 @@ function parseDate(line: string, today: Date): Date | null {
   return candidate;
 }
 
-export function parseShiftBlock(text: string, today = new Date(), asWfh = false): ParseResult {
+export interface ParseOptions {
+  /** Shift length to assume when the paste carries no scheduled range. */
+  defaultShiftHours?: number;
+}
+
+export function parseShiftBlock(
+  text: string,
+  today = new Date(),
+  asWfh = false,
+  options: ParseOptions = {},
+): ParseResult {
   const lines = text
     .split('\n')
     .map((l) => l.trim())
@@ -115,7 +130,9 @@ export function parseShiftBlock(text: string, today = new Date(), asWfh = false)
     }
   }
 
-  if (date === null) return { error: 'Could not find a date such as "(21 Sept)".' };
+  // The portal block carries a date, but a hand-typed entry usually will not.
+  // Today is the only sensible reading of a paste with no date on it.
+  const day = date ?? today;
 
   // A WFH day may be pasted with only a date and a shift range - there is no
   // biometric entry to record, so the scheduled shift is what gets credited.
@@ -129,8 +146,8 @@ export function parseShiftBlock(text: string, today = new Date(), asWfh = false)
 
     return {
       record: {
-        Date: displayDate(date),
-        FullDate: isoDate(date),
+        Date: displayDate(day),
+        FullDate: isoDate(day),
         IsWfh: true,
         // Left undefined when no range was given, so the default applies.
         WfhHours: wfhHours,
@@ -139,19 +156,28 @@ export function parseShiftBlock(text: string, today = new Date(), asWfh = false)
     };
   }
 
-  if (shiftStart === null || shiftEnd === null) {
-    return { error: 'Could not find a shift range such as "10:00 AM - 7:00 PM".' };
+  if (entry === null) {
+    return { error: 'Could not find an entry time such as "10:23:44 AM" or "10.23".' };
   }
-  if (entry === null) return { error: 'Could not find a biometric entry time.' };
 
-  let shiftLength = shiftEnd - shiftStart;
-  if (shiftLength < 0) shiftLength += 86400; // overnight shift
+  // With no scheduled range in the paste, the day is assumed to be a full one
+  // of the configured length. The roster itself stays unrecorded rather than
+  // invented: without it there is nothing to measure lateness against, and
+  // guessing a start would report a punctuality the paste never claimed.
+  const known = shiftStart !== null && shiftEnd !== null;
+  let shiftLength: number;
+  if (known) {
+    shiftLength = shiftEnd! - shiftStart!;
+    if (shiftLength < 0) shiftLength += 86400; // overnight shift
+  } else {
+    shiftLength = Math.round((options.defaultShiftHours ?? 9) * 3600);
+  }
 
   const record: ShiftRecord = {
-    Date: displayDate(date),
-    FullDate: isoDate(date),
-    ShiftStart: toClock(shiftStart),
-    ShiftEnd: toClock(shiftEnd),
+    Date: displayDate(day),
+    FullDate: isoDate(day),
+    ShiftStart: known ? toClock(shiftStart!) : undefined,
+    ShiftEnd: known ? toClock(shiftEnd!) : undefined,
     EntryTime: toClock(entry),
     Exit95: toClock(entry + Math.floor(shiftLength * 0.95)),
     Exit100: toClock(entry + shiftLength),
@@ -163,10 +189,13 @@ export function parseShiftBlock(text: string, today = new Date(), asWfh = false)
   return { record, portalStatus };
 }
 
-/** How late the entry was against the scheduled start. */
-export function lateBySeconds(record: ShiftRecord): number {
+/**
+ * How late the entry was against the scheduled start, or null when the paste
+ * carried no roster - "on time" would be a claim the data does not support.
+ */
+export function lateBySeconds(record: ShiftRecord): number | null {
   const start = parseClock(record.ShiftStart);
   const entry = parseClock(record.EntryTime);
-  if (start === null || entry === null) return 0;
+  if (start === null || entry === null) return null;
   return entry - start;
 }
