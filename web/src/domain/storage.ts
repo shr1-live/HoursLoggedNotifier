@@ -60,7 +60,15 @@ export function loadShifts(): ShiftRecord[] {
     const raw = localStorage.getItem(SHIFTS_KEY);
     if (!raw) return [];
     const parsed: unknown = JSON.parse(raw);
-    return Array.isArray(parsed) ? (parsed as ShiftRecord[]) : [];
+    if (!Array.isArray(parsed)) return [];
+    // The desktop app appends in the order days were entered, not in date
+    // order, so a file straight from it arrives shuffled. Sorting here means
+    // every reader gets newest-first, which is what upsert and mergeImported
+    // already promise - without it a recent day lands in the middle of the
+    // history table and reads as missing.
+    return (parsed as ShiftRecord[])
+      .slice()
+      .sort((a, b) => b.FullDate.localeCompare(a.FullDate));
   } catch {
     return [];
   }
