@@ -88,6 +88,7 @@ export function parseShiftBlock(
   let shiftStart: number | null = null;
   let shiftEnd: number | null = null;
   let entry: number | null = null;
+  let actualExit: number | null = null;
   let location: string | null = null;
   let portalStatus: string | undefined;
 
@@ -112,11 +113,20 @@ export function parseShiftBlock(
       }
     }
 
-    // A bare time is the biometric entry.
+    // The first bare time is the biometric entry; a second one is the swipe
+    // out. Without picking that up the day has no recorded exit and falls back
+    // to the whole scheduled shift, which reads as a full 9h however early you
+    // actually left.
     const single = parseTimeToken(line);
-    if (single !== null && entry === null) {
-      entry = single;
-      continue;
+    if (single !== null) {
+      if (entry === null) {
+        entry = single;
+        continue;
+      }
+      if (actualExit === null) {
+        actualExit = single;
+        continue;
+      }
     }
 
     if (/^(MISSING|PRESENT|APPROVED|PENDING)$/i.test(line)) {
@@ -159,6 +169,13 @@ export function parseShiftBlock(
   if (entry === null) {
     return { error: 'Could not find an entry time such as "10:23:44 AM" or "10.23".' };
   }
+  // Refused rather than stored: a logout before the entry is either a typo or
+  // a missing am/pm, and keeping it would silently credit the day zero hours.
+  if (actualExit !== null && actualExit < entry) {
+    return {
+      error: `The logout time (${toClock(actualExit)}) is before the entry time (${toClock(entry)}).`,
+    };
+  }
 
   // With no scheduled range in the paste, the day is assumed to be a full one
   // of the configured length. The roster itself stays unrecorded rather than
@@ -181,7 +198,7 @@ export function parseShiftBlock(
     EntryTime: toClock(entry),
     Exit95: toClock(entry + Math.floor(shiftLength * 0.95)),
     Exit100: toClock(entry + shiftLength),
-    ActualExitTime: null,
+    ActualExitTime: actualExit === null ? null : toClock(actualExit),
     Location: location,
     IsWfh: false,
   };

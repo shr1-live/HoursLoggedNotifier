@@ -613,7 +613,7 @@ export default function App() {
           <textarea
             value={paste}
             onChange={(e) => setPaste(e.target.value)}
-            placeholder={'General Shift\n(21 Sept)\n10:00 AM - 7:00 PM\n\nGurgaon Biometric\n10:24:52 AM\nMISSING'}
+            placeholder={'General Shift\n(21 Sept)\n10:00 AM - 7:00 PM\n\nGurgaon Biometric\n10:24:52 AM\n7:04:29 PM\n\nOr just the entry time on its own.'}
             rows={8}
             spellCheck={false}
           />
