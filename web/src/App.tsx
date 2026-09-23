@@ -26,6 +26,7 @@ import { AdaptiveWidget } from './components/AdaptiveWidget';
 import { RingGauge } from './components/RingGauge';
 import { WeekChart } from './components/WeekChart';
 import { KpiBand } from './components/KpiBand';
+import { TodayPlanCard } from './components/TodayPlan';
 import {
   DailyTrend,
   EntryTrendChart,
@@ -44,6 +45,7 @@ import {
 } from './domain/analytics';
 import {
   crossedThresholds,
+  fireOnceToday,
   notificationPermission,
   notify,
   requestNotificationPermission,
@@ -57,6 +59,7 @@ import {
   wfhCredit,
 } from './domain/attendance';
 import { lateBySeconds, parseShiftBlock } from './domain/parseShift';
+import { todayPlan } from './domain/plan';
 import {
   lastExportedAt,
   loadSettings,
@@ -160,6 +163,12 @@ export default function App() {
   const todayIso = isoDate(now);
   const todayRecord = records.find((r) => r.FullDate === todayIso);
 
+  // What today still asks of you, given what the week already owes.
+  const plan = useMemo(
+    () => todayPlan(todayRecord, today, totals, settings, now),
+    [todayRecord, today, totals, settings, now],
+  );
+
   useEffect(() => {
     if (!settings.notifyOnThreshold || !today) return;
     const percent = today.fraction * 100;
@@ -171,6 +180,29 @@ export default function App() {
       );
     }
   }, [today, todayIso, settings.notifyOnThreshold, settings.alertThresholds]);
+
+  // The alert that matters: you have done today's share, so stop. Fires once,
+  // the moment the countdown reaches zero, rather than on every tick.
+  useEffect(() => {
+    if (!settings.notifyOnThreshold) return;
+    if (plan.state === 'can-leave' && fireOnceToday(todayIso, 'can-leave')) {
+      notify(
+        "Today's hours are done",
+        `${formatDuration(plan.loggedToday)} logged. The week is at its mark - you can log out.`,
+      );
+    }
+    if (
+      plan.state === 'working'
+      && plan.untilLogout !== null
+      && plan.untilLogout <= 0
+      && fireOnceToday(todayIso, 'logout-due')
+    ) {
+      notify(
+        'Time to log out',
+        `${formatDuration(plan.loggedToday)} logged today. That is today's share of the week.`,
+      );
+    }
+  }, [plan, todayIso, settings.notifyOnThreshold]);
 
 
   function handleParse(asWfh = false) {
@@ -458,6 +490,10 @@ export default function App() {
         </div>
       )}
 
+      {/* What to do today comes before what has happened, which is what every
+          other panel already reports. */}
+      <TodayPlanCard plan={plan} />
+
       {/* The figures worth seeing before anything else, so the page answers
           "where am I" above the fold rather than in a chart further down. */}
       <KpiBand
@@ -631,8 +667,11 @@ export default function App() {
 
           <h3>Working from home</h3>
           <div className="row">
+            {/* Must name the WFH default, not the daily goal: leaving the hours
+                unset credits defaultWfhHours, so labelling it with the office
+                goal promised 9h and recorded 9h 30m. */}
             <button onClick={() => logWfh()}>
-              Log WFH ({settings.dailyGoalHours}h default)
+              Log WFH ({formatDuration(settings.defaultWfhHours * 3600)} default)
             </button>
             <HoursMinutesInput value={wfhEntry} onChange={setWfhEntry} />
             <button onClick={() => logWfh(wfhEntry)} disabled={wfhEntry <= 0}>
