@@ -13,6 +13,8 @@ public sealed record DashboardSnapshot(
     string Clock,
     string Logged,
     double Fraction,
+    /// <summary>Share of the shift at which the day is done - 0.95 by default.</summary>
+    double TargetFraction,
     string Entry,
     string Location,
     string Exit95,

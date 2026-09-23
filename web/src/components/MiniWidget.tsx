@@ -4,6 +4,8 @@ import { formatDuration } from '../domain/time';
 interface MiniWidgetProps {
   /** 0..1 through today's shift, or null when nothing is running. */
   fraction: number | null;
+  /** Where the day is done - 0.95 of the shift by default. */
+  targetFraction: number;
   loggedSeconds: number;
   officeFraction: number;
 }
@@ -12,7 +14,7 @@ interface MiniWidgetProps {
  * The smallest useful view: one ring, the percentage, nothing else. Sized for
  * a picture-in-picture window that sits above other windows while you work.
  */
-export function MiniWidget({ fraction, loggedSeconds, officeFraction }: MiniWidgetProps) {
+export function MiniWidget({ fraction, targetFraction, loggedSeconds, officeFraction }: MiniWidgetProps) {
   if (fraction === null) {
     return (
       <div className="mini mini-empty">
@@ -23,12 +25,12 @@ export function MiniWidget({ fraction, loggedSeconds, officeFraction }: MiniWidg
   }
 
   const percent = Math.round(fraction * 100);
-  const state = fraction >= 0.999 ? 'good' : fraction >= 0.75 ? 'warn' : 'bad';
+  const state = fraction >= targetFraction ? 'good' : fraction >= targetFraction * 0.8 ? 'warn' : 'bad';
 
   return (
     <div className="mini">
       <div className="mini-ring">
-        <RingGauge fraction={fraction} value={`${percent}%`} size={150} />
+        <RingGauge fraction={fraction} goodThreshold={targetFraction} value={`${percent}%`} size={150} />
       </div>
       <div className="mini-meta">
         <span className={`mini-logged ${state}`}>{formatDuration(loggedSeconds)}</span>

@@ -30,6 +30,9 @@ public sealed class FloatingBarWidget : LayeredWindow
 
     private double _shown;
     private double _target;
+    // The share of the shift at which the day is done - the gauge turns
+    // green here rather than at a full 100%.
+    private double _targetFraction = 0.95;
     private double _pulse;
 
     public FloatingBarWidget(Func<DashboardSnapshot?> nextFrame, BarOrientation orientation)
@@ -60,6 +63,7 @@ public sealed class FloatingBarWidget : LayeredWindow
     {
         var frame = _nextFrame();
         _target = frame?.Fraction ?? 0;
+        _targetFraction = frame?.TargetFraction ?? 0.95;
 
         _shown += (_target - _shown) * 0.12;
         if (Math.Abs(_target - _shown) < 0.0005) _shown = _target;
@@ -79,7 +83,7 @@ public sealed class FloatingBarWidget : LayeredWindow
             g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAlias;
             g.Clear(Color.Transparent);
 
-            var colour = ColourFor(_shown);
+            var colour = ColourFor(_shown, _targetFraction);
             var track = TrackBounds();
 
             using (var trackBrush = new SolidBrush(Color.FromArgb(120, 90, 96, 110)))
@@ -91,7 +95,7 @@ public sealed class FloatingBarWidget : LayeredWindow
 
                 // A breathing glow while the shift is running, so the line
                 // reads as live rather than as a static decoration.
-                if (_target < 1)
+                if (_target < _targetFraction)
                 {
                     var glow = (int)(40 + 24 * Math.Sin(_pulse));
                     using var halo = new SolidBrush(Color.FromArgb(glow, colour));
@@ -128,7 +132,7 @@ public sealed class FloatingBarWidget : LayeredWindow
         using var font = new Font("Segoe UI", 9f, FontStyle.Bold);
         using var brush = new SolidBrush(frame is null
             ? Color.FromArgb(190, 210, 214, 220)
-            : ColourFor(_shown));
+            : ColourFor(_shown, _targetFraction));
 
         var centred = new StringFormat
         {
@@ -145,9 +149,9 @@ public sealed class FloatingBarWidget : LayeredWindow
         g.DrawString(text, font, brush, area, centred);
     }
 
-    private static Color ColourFor(double fraction) => fraction >= 0.999
+    private static Color ColourFor(double fraction, double target) => fraction >= target
         ? Color.FromArgb(76, 201, 132)
-        : fraction >= 0.75
+        : fraction >= target * 0.8
             ? Color.FromArgb(232, 178, 70)
             : Color.FromArgb(220, 96, 96);
 

@@ -23,6 +23,9 @@ public sealed class FloatingRingWidget : LayeredWindow
     /// <summary>Eased towards the real value, so the ring sweeps rather than jumps.</summary>
     private double _shown;
     private double _target;
+    // The share of the shift at which the day is done - the gauge turns
+    // green here rather than at a full 100%.
+    private double _targetFraction = 0.95;
     private double _pulse;
     private bool _hovered;
 
@@ -52,6 +55,7 @@ public sealed class FloatingRingWidget : LayeredWindow
     {
         var frame = _nextFrame();
         _target = frame?.Fraction ?? 0;
+        _targetFraction = frame?.TargetFraction ?? 0.95;
 
         // Exponential ease: fast while far, gentle as it settles.
         _shown += (_target - _shown) * 0.12;
@@ -87,11 +91,11 @@ public sealed class FloatingRingWidget : LayeredWindow
 
             if (_shown > 0.001)
             {
-                var colour = ColourFor(_shown);
+                var colour = ColourFor(_shown, _targetFraction);
 
                 // A faint glow that breathes while the shift is still running,
                 // so the widget reads as live at a glance.
-                if (_target < 1)
+                if (_target < _targetFraction)
                 {
                     var glow = (int)(38 + 22 * Math.Sin(_pulse));
                     using var halo = new Pen(Color.FromArgb(glow, colour), thickness + 8);
@@ -144,9 +148,9 @@ public sealed class FloatingRingWidget : LayeredWindow
             new RectangleF(0, Height / 2f + 8, Width, 18), centred);
     }
 
-    private static Color ColourFor(double fraction) => fraction >= 0.999
+    private static Color ColourFor(double fraction, double target) => fraction >= target
         ? Color.FromArgb(76, 201, 132)
-        : fraction >= 0.75
+        : fraction >= target * 0.8
             ? Color.FromArgb(232, 178, 70)
             : Color.FromArgb(220, 96, 96);
 

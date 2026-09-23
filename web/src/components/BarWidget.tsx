@@ -1,8 +1,10 @@
 import { formatDuration } from '../domain/time';
 
 interface BarWidgetProps {
-  /** 0..1 through today's shift, or null when nothing is running. */
+  /** 0..1 through today's whole shift, or null when nothing is running. */
   fraction: number | null;
+  /** Where the day is done - 0.95 of the shift by default. */
+  targetFraction: number;
   loggedSeconds: number;
   remainingSeconds: number;
   officeFraction: number;
@@ -15,6 +17,7 @@ interface BarWidgetProps {
  */
 export function BarWidget({
   fraction,
+  targetFraction,
   loggedSeconds,
   remainingSeconds,
   officeFraction,
@@ -30,9 +33,9 @@ export function BarWidget({
   }
 
   const percent = Math.round(fraction * 100);
-  const state = fraction >= 0.999 ? 'good' : fraction >= 0.75 ? 'warn' : 'bad';
+  const state = fraction >= targetFraction ? 'good' : fraction >= targetFraction * 0.8 ? 'warn' : 'bad';
   // The glow stops once the shift is complete, so "running" reads at a glance.
-  const running = fraction < 1;
+  const running = fraction < targetFraction;
 
   return (
     <div className="bar-widget">
@@ -44,7 +47,7 @@ export function BarWidget({
           style={{ width: `${Math.min(100, fraction * 100)}%` }}
         />
         {/* The 95% threshold, visible before it is reached. */}
-        <div className="bar-mark" style={{ left: '95%' }} title="95%" />
+        <div className="bar-mark" style={{ left: `${targetFraction * 100}%` }} title="the point you can leave" />
       </div>
 
       <span className="bar-sub">
