@@ -116,7 +116,17 @@ static void StartReminderLoop(ShiftStorageService storage, EmailService emailSer
 static void SendReminderIfDue(ShiftStorageService storage, EmailService emailService, NotificationService notifier)
 {
     var shift = storage.GetToday();
-    if (shift is null || shift.IsWfh) return;
+    if (shift is null) return;
+
+    // A day at home has no clock running down, so it used to be skipped
+    // entirely and every WFH day passed in silence. It gets one confirmation
+    // instead - the credit and where the week stands - rather than a countdown
+    // repeated all afternoon.
+    if (shift.IsWfh)
+    {
+        AnnounceWfhIfDue(shift, storage, emailService, notifier);
+        return;
+    }
 
     // Signed off for the day - nothing left to remind about.
     if (ShiftCalculationService.IsClockedOut(shift)) return;
@@ -145,6 +155,43 @@ static void SendReminderIfDue(ShiftStorageService storage, EmailService emailSer
         catch (Exception ex)
         {
             Console.WriteLine($"[Failed to send reminder email: {ex.Message}]");
+        }
+    }
+}
+
+/// <summary>
+/// One notice per day that a home day is recorded and what it credits. There is
+/// no entry time to count from, so repeating it every interval would be noise.
+/// </summary>
+static void AnnounceWfhIfDue(ShiftRecord shift, ShiftStorageService storage, EmailService emailService, NotificationService notifier)
+{
+    if (WfhNotice.AnnouncedFor == shift.FullDate) return;
+    WfhNotice.AnnouncedFor = shift.FullDate;
+
+    var credited = AttendanceReportService.GetWfhCredit(shift, emailService.DailyHourGoal);
+    var all = storage.LoadAll();
+
+    var body = string.Join("\n", new[]
+    {
+        $"Working from home - {ShiftCalculationService.FormatDuration(credited)} credited" +
+            (shift.WfhHours.HasValue ? "." : " (default - change it with e.g. 'wfh 7.5')."),
+        AttendanceReportService.FormatOfficeTargetSummary(all, emailService.RequiredOfficeDaysPerWeek, emailService.DailyHourGoal),
+        AttendanceReportService.FormatWeeklyHoursSummary(all, emailService.DailyHourGoal)
+    });
+
+    notifier.Show($"Working From Home - {shift.Date}", body);
+    if (!Dashboard.IsActive)
+        Console.WriteLine($"\n[WFH notification sent at {DateTime.Now:h:mm:ss tt}] - {ShiftCalculationService.FormatDuration(credited)} credited");
+
+    if (emailService.IsConfigured)
+    {
+        try
+        {
+            emailService.Send($"Working From Home - {shift.Date}", body);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[WFH email failed: {ex.Message}]");
         }
     }
 }
@@ -203,6 +250,12 @@ static string BuildReminderBody(ShiftRecord shift, ShiftStorageService storage, 
     var left100 = ShiftCalculationService.GetTimeLeft(shift, shift.Exit100);
 
     var lines = new List<string> { $"Time spent so far: {ShiftCalculationService.FormatDuration(spent)}" };
+
+    // The reminder knew whether the morning ran late and never said so.
+    var late = shift.EntryTime.ToTimeSpan() - shift.ShiftStart.ToTimeSpan();
+    lines.Add(late > TimeSpan.FromMinutes(1)
+        ? $"Logged in {ShiftCalculationService.FormatDuration(late)} late ({shift.EntryTime:h:mm:ss tt} against {shift.ShiftStart:h:mm tt})."
+        : $"Logged in on time at {shift.EntryTime:h:mm:ss tt}.");
 
     lines.Add(left95 > TimeSpan.Zero
         ? $"Time left (95%): {ShiftCalculationService.FormatDuration(left95)} (exit at {shift.Exit95:h:mm:ss tt})"
@@ -936,6 +989,11 @@ static class Dashboard
 
 /// <summary>Remembers the day the completion notice went out, so it only fires once.</summary>
 static class CompletionNotice
+{
+    public static DateOnly? AnnouncedFor { get; set; }
+}
+
+static class WfhNotice
 {
     public static DateOnly? AnnouncedFor { get; set; }
 }
