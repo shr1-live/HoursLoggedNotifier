@@ -252,3 +252,117 @@ export function goalStreak(records: ShiftRecord[], settings: Settings, now = new
 
   return streak;
 }
+
+export interface DayPoint {
+  iso: string;
+  label: string;
+  hours: number;
+  isWfh: boolean;
+  /** No record at all, as opposed to a record of zero hours. */
+  missing: boolean;
+}
+
+/**
+ * The last N working days, oldest first. Weekends are skipped rather than
+ * drawn as gaps, so a fortnight reads as ten bars instead of fourteen with
+ * two holes in it.
+ */
+export function dailyTrend(
+  records: ShiftRecord[],
+  settings: Settings,
+  days = 10,
+  now = new Date(),
+): DayPoint[] {
+  const byDate = new Map(records.map((r) => [r.FullDate, r]));
+  const points: DayPoint[] = [];
+  const cursor = new Date(now);
+
+  while (points.length < days) {
+    const weekday = (cursor.getDay() + 6) % 7;
+    if (weekday < 5) {
+      const iso = isoDate(cursor);
+      const record = byDate.get(iso);
+      const seconds = record
+        ? record.IsWfh
+          ? wfhCredit(record, settings)
+          : loggedSeconds(record, now)
+        : 0;
+
+      points.push({
+        iso,
+        label: `${cursor.getDate()} ${cursor.toLocaleString('en-GB', { month: 'short' })}`,
+        hours: seconds / 3600,
+        isWfh: record?.IsWfh ?? false,
+        missing: !record,
+      });
+    }
+    cursor.setDate(cursor.getDate() - 1);
+  }
+
+  return points.reverse();
+}
+
+export interface LocationSplit {
+  officeHours: number;
+  wfhHours: number;
+  totalHours: number;
+  /** Office share of the total, 0-1. */
+  officeShare: number;
+}
+
+/** How the logged time divides between office and home, across all history. */
+export function locationSplit(
+  records: ShiftRecord[],
+  settings: Settings,
+  now = new Date(),
+): LocationSplit {
+  let officeSeconds = 0;
+  let wfhSeconds = 0;
+
+  for (const record of records) {
+    if (record.IsWfh) wfhSeconds += wfhCredit(record, settings);
+    else officeSeconds += loggedSeconds(record, now);
+  }
+
+  const total = officeSeconds + wfhSeconds;
+  return {
+    officeHours: officeSeconds / 3600,
+    wfhHours: wfhSeconds / 3600,
+    totalHours: total / 3600,
+    officeShare: total > 0 ? officeSeconds / total : 0,
+  };
+}
+
+export interface EntryPoint {
+  iso: string;
+  label: string;
+  /** Seconds since midnight. */
+  entry: number;
+  start: number;
+  /** Signed seconds against the rostered start - negative is early. */
+  delta: number;
+}
+
+/**
+ * Entry time against the rostered start for recent office days. Plotted as a
+ * signed delta rather than a clock time, so "on time" is a flat line at zero
+ * and lateness reads as height rather than as an absolute hour.
+ */
+export function entryTrend(records: ShiftRecord[], limit = 14): EntryPoint[] {
+  return records
+    .filter((r) => !r.IsWfh && r.EntryTime && r.ShiftStart)
+    .sort((a, b) => a.FullDate.localeCompare(b.FullDate))
+    .slice(-limit)
+    .flatMap((record) => {
+      const entry = parseClock(record.EntryTime);
+      const start = parseClock(record.ShiftStart);
+      if (entry === null || start === null) return [];
+      return [{
+        iso: record.FullDate,
+        label: record.Date,
+        entry,
+        start,
+        delta: entry - start,
+      }];
+    });
+}

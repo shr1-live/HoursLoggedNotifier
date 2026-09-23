@@ -25,9 +25,18 @@ import { HoursMinutesInput } from './components/HoursMinutesInput';
 import { AdaptiveWidget } from './components/AdaptiveWidget';
 import { RingGauge } from './components/RingGauge';
 import { WeekChart } from './components/WeekChart';
+import { KpiBand } from './components/KpiBand';
+import {
+  DailyTrend,
+  EntryTrendChart,
+  LocationSplitChart,
+} from './components/TrendCharts';
 import {
   byDayOfWeek,
+  dailyTrend,
+  entryTrend,
   goalStreak,
+  locationSplit,
   overallTotals,
   punctuality,
   weekPace,
@@ -108,6 +117,9 @@ export default function App() {
     () => weekPace(totals.totalSeconds, settings, now),
     [totals.totalSeconds, settings, now],
   );
+  const fortnight = useMemo(() => dailyTrend(records, settings, 10, now), [records, settings, now]);
+  const split = useMemo(() => locationSplit(records, settings, now), [records, settings, now]);
+  const arrivals = useMemo(() => entryTrend(records), [records]);
 
   // The compact window renders the same data with a different layout.
   const params = typeof window !== 'undefined'
@@ -434,6 +446,16 @@ export default function App() {
         </div>
       )}
 
+      {/* The figures worth seeing before anything else, so the page answers
+          "where am I" above the fold rather than in a chart further down. */}
+      <KpiBand
+        today={today}
+        week={totals}
+        pace={pace}
+        streak={streak}
+        punctual={punctual}
+      />
+
       <MotionSection className="grid">
         <MotionCard className="card centre" index={0}>
           <h2>Today</h2>
@@ -662,18 +684,36 @@ export default function App() {
       </MotionSection>
 
       <MotionSection className="card">
-        <h2>Analytics</h2>
+        <h2>Totals</h2>
+        <p className="card-note">Everything logged since you started, at a glance.</p>
         <StatGrid
           totals={overall}
           punctual={punctual}
-          streak={streak}
           goalHours={settings.dailyGoalHours}
         />
       </MotionSection>
 
       <MotionSection className="two-up">
         <MotionCard className="card">
+          <h2>Last 10 working days</h2>
+          <p className="card-note">
+            The shape of the fortnight. A dip below the goal line is a short day.
+          </p>
+          <DailyTrend points={fortnight} goalHours={settings.dailyGoalHours} />
+        </MotionCard>
+        <MotionCard className="card">
+          <h2>Where the time goes</h2>
+          <p className="card-note">
+            Office against home across all history, by hours rather than by days.
+          </p>
+          <LocationSplitChart split={split} />
+        </MotionCard>
+      </MotionSection>
+
+      <MotionSection className="two-up">
+        <MotionCard className="card">
           <h2>Last 6 weeks</h2>
+          <p className="card-note">Weekly totals, split by where the hours were spent.</p>
           <WeeklyTrend
             points={trend}
             targetHours={settings.dailyGoalHours * settings.workdaysPerWeek}
@@ -681,13 +721,24 @@ export default function App() {
         </MotionCard>
         <MotionCard className="card">
           <h2>Average by weekday</h2>
+          <p className="card-note">Which days of the week run long, and which run short.</p>
           <DayOfWeekChart stats={dayStats} goalHours={settings.dailyGoalHours} />
         </MotionCard>
       </MotionSection>
 
-      <MotionSection className="card">
-        <h2>Pace this week</h2>
-        <PaceCard pace={pace} />
+      <MotionSection className="two-up">
+        <MotionCard className="card">
+          <h2>Pace this week</h2>
+          <p className="card-note">Measured against an even spread, not against the final total.</p>
+          <PaceCard pace={pace} />
+        </MotionCard>
+        <MotionCard className="card">
+          <h2>Arrival times</h2>
+          <p className="card-note">
+            How far each office morning ran from the rostered start. The line is on time.
+          </p>
+          <EntryTrendChart points={arrivals} />
+        </MotionCard>
       </MotionSection>
 
       <MotionSection className="card">

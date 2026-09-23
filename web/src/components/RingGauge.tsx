@@ -12,6 +12,10 @@ interface RingGaugeProps {
  * A donut where colour carries the same message as the number: red early,
  * amber approaching, green once the threshold is passed. Drawn as plain SVG
  * so there is no chart library between the data and the pixels.
+ *
+ * Every colour comes from the stylesheet rather than a literal here - the
+ * earlier fixed values were dark-theme only, which left the centre reading
+ * white-on-white in light mode.
  */
 export function RingGauge({
   fraction,
@@ -26,8 +30,7 @@ export function RingGauge({
   const circumference = 2 * Math.PI * radius;
   const centre = size / 2;
 
-  const colour =
-    clamped >= goodThreshold ? '#4cc984' : clamped >= 0.6 ? '#e8b246' : '#dc6060';
+  const tone = clamped >= goodThreshold ? 'good' : clamped >= 0.6 ? 'warn' : 'bad';
 
   // Angle of the threshold tick, measured from twelve o'clock.
   const tickAngle = goodThreshold * 2 * Math.PI - Math.PI / 2;
@@ -35,50 +38,61 @@ export function RingGauge({
   const tickOuter = radius + stroke / 2;
 
   return (
-    <svg width={size} height={size} role="img" aria-label={`${value} ${caption ?? ''}`.trim()}>
+    <svg
+      className="ring"
+      width={size}
+      height={size}
+      role="img"
+      aria-label={`${value} ${caption ?? ''}`.trim()}
+    >
       <circle
+        className="ring-track"
         cx={centre}
         cy={centre}
         r={radius}
         fill="none"
-        stroke="#30343e"
         strokeWidth={stroke}
       />
       <circle
+        className={`ring-arc ${tone}`}
         cx={centre}
         cy={centre}
         r={radius}
         fill="none"
-        stroke={colour}
         strokeWidth={stroke}
         strokeLinecap="round"
         strokeDasharray={circumference}
         strokeDashoffset={circumference * (1 - clamped)}
         transform={`rotate(-90 ${centre} ${centre})`}
-        style={{ transition: 'stroke-dashoffset 0.6s ease, stroke 0.6s ease' }}
       />
       {goodThreshold > 0 && goodThreshold < 1 && (
         <line
+          className="ring-tick"
           x1={centre + tickInner * Math.cos(tickAngle)}
           y1={centre + tickInner * Math.sin(tickAngle)}
           x2={centre + tickOuter * Math.cos(tickAngle)}
           y2={centre + tickOuter * Math.sin(tickAngle)}
-          stroke="rgba(255,255,255,0.55)"
           strokeWidth={2}
         />
       )}
       <text
+        className="ring-value"
         x={centre}
-        y={caption ? centre - 4 : centre + 6}
+        y={caption ? centre - 2 : centre + 6}
         textAnchor="middle"
-        fill="#ffffff"
-        fontSize={size * 0.16}
+        fontSize={size * 0.17}
         fontWeight={600}
       >
         {value}
       </text>
       {caption && (
-        <text x={centre} y={centre + 20} textAnchor="middle" fill="#969ba5" fontSize={size * 0.082}>
+        <text
+          className="ring-caption"
+          x={centre}
+          y={centre + 22}
+          textAnchor="middle"
+          fontSize={size * 0.082}
+        >
           {caption}
         </text>
       )}
