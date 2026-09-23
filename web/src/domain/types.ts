@@ -37,6 +37,9 @@ export interface Settings {
   targetExit: '95' | '100';
   /** Whether to raise a browser notification at those thresholds. */
   notifyOnThreshold: boolean;
+  /** The hour you would rather be finished by, "HH:mm", used to work
+      backwards to a latest sensible arrival. */
+  preferredFinish: string;
 }
 
 export const defaultSettings: Settings = {
@@ -48,4 +51,5 @@ export const defaultSettings: Settings = {
   targetExit: '95',
   alertThresholds: [50, 75, 95, 100],
   notifyOnThreshold: true,
+  preferredFinish: '19:00',
 };

@@ -76,3 +76,31 @@ export function notify(title: string, body: string): void {
     // should never break the dashboard.
   }
 }
+
+const ONCE_KEY = 'hln.firedOnce';
+
+/**
+ * A once-per-day latch for events that are not percentages - reaching the
+ * logout time, or the week's mark. Returns true the first time it is asked on
+ * a given day and false afterwards, so an alert does not repeat every tick or
+ * replay on a reload.
+ */
+export function fireOnceToday(todayIso: string, key: string): boolean {
+  let state: { date: string; keys: string[] } = { date: '', keys: [] };
+  try {
+    const raw = localStorage.getItem(ONCE_KEY);
+    if (raw) state = JSON.parse(raw) as typeof state;
+  } catch {
+    // Treated as nothing fired yet.
+  }
+
+  const keys = state.date === todayIso ? state.keys : [];
+  if (keys.includes(key)) return false;
+
+  try {
+    localStorage.setItem(ONCE_KEY, JSON.stringify({ date: todayIso, keys: [...keys, key] }));
+  } catch {
+    // At worst the alert repeats after a reload.
+  }
+  return true;
+}
