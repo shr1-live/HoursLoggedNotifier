@@ -1,36 +1,72 @@
 :root {
   /* Light palette is the base, so a missing data-theme still renders. */
-  --bg: #f4f6f9;
-  --panel: #ffffff;
-  --panel-soft: #eef1f6;
-  --line: #d8dee7;
-  --text: #1b1f27;
-  --muted: #5c6472;
-  --accent: #1f7fc4;
+  --bg: #f5f5f7;          /* parchment - the signature off-white */
+  --panel: #ffffff;       /* canvas */
+  --panel-soft: #fafafc;  /* pearl - lighter than the canvas so a button still reads as one */
+  --line: #e0e0e0;        /* hairline */
+  --line-soft: #f0f0f0;   /* divider - a ring rather than a hard line */
+  --text: #1d1d1f;        /* ink - near-black, so the page reads photographic not printed */
+  --muted: #6e6e73;
+  --accent: #0066cc;      /* Action Blue - the single interactive colour */
+  --accent-focus: #0071e3;
   --accent-ink: #ffffff;
-  --good: #1f9d5c;
-  --warn: #b57614;
-  --bad: #c33b3b;
-  --grid: #e4e8ee;
-  --shadow: 0 1px 2px rgba(16, 20, 28, 0.06), 0 4px 16px rgba(16, 20, 28, 0.06);
+  --good: #1f7a4d;
+  --warn: #8a5a00;
+  --bad: #b32d2d;
+  --grid: #f0f0f0;
 
-  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  /* Two-series chart identity. Validated for colour-vision deficiency against
+     both surfaces - see the note above .chart-legend. Deliberately clear of the
+     status hues below, so "WFH" can never be misread as "warning". */
+  --series-office: #0066cc;
+  --series-wfh: #d9418c;
+
+  /* Apple uses exactly one drop-shadow, on product imagery resting on a
+     surface. Cards get a hairline instead; the ring is our product shot. */
+  --shadow: none;
+  --shadow-product: 3px 5px 30px 0 rgba(0, 0, 0, 0.22);
+
+  --r-sm: 8px;
+  --r-md: 11px;
+  --r-lg: 18px;
+  --r-pill: 9999px;
+
+  /* SF Pro is Apple's and is not webfont-available; the content-security
+     policy also forbids remote fonts. This stack resolves to the real SF Pro
+     on Apple hardware and to the host UI face elsewhere, and the metrics below
+     carry the rest of the voice. */
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI Variable Text',
+    'Segoe UI', system-ui, sans-serif;
+  font-size: 17px;          /* not 16 - the extra pixel sets the reading pace */
+  line-height: 1.47;
+  letter-spacing: -0.374px;
+  -webkit-font-smoothing: antialiased;
 }
 
 :root[data-theme='dark'] {
-  --bg: #181a20;
-  --panel: #20232b;
-  --panel-soft: #1a1d24;
-  --line: #30343e;
-  --text: #e6e8ec;
-  --muted: #969ba5;
-  --accent: #78c8ff;
-  --accent-ink: #10131a;
+  /* The source design documents only the light system, so these steps are
+     chosen rather than flipped - the tile greys it does specify, with the
+     brighter on-dark blue it reserves for links over dark surfaces. */
+  --bg: #1d1d1f;
+  --panel: #272729;       /* near-black tile 1 */
+  --panel-soft: #2a2a2c;  /* tile 2 - a micro-step lighter for nested surfaces */
+  --line: #3a3a3c;
+  --line-soft: #333335;
+  --text: #ffffff;
+  --muted: #a1a1a6;
+  --accent: #2997ff;      /* Sky Link Blue - Action Blue disappears on a dark tile */
+  --accent-focus: #4ba3ff;
+  --accent-ink: #00264d;
   --good: #4cc984;
   --warn: #e8b246;
-  --bad: #dc6060;
-  --grid: #282c35;
+  --bad: #ff6b6b;
+  --grid: #313133;
+
+  --series-office: #2997ff;
+  --series-wfh: #d9418c;
+
   --shadow: none;
+  --shadow-product: 3px 5px 30px 0 rgba(0, 0, 0, 0.55);
 }
 
 * { box-sizing: border-box; }
@@ -42,46 +78,66 @@ body {
 }
 
 .page {
-  max-width: 1080px;
+  max-width: 1200px;
   margin: 0 auto;
-  padding: 24px 16px 64px;
+  padding: 32px 24px 80px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 24px;
 }
 
 .header {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
-  gap: 16px;
+  align-items: flex-end;
+  gap: 24px;
   flex-wrap: wrap;
 }
 
-.header h1 { margin: 0; font-size: 1.6rem; }
-.header p { margin: 4px 0 0; }
+/* Display sizes carry a tighter tracking than body - that negative letter
+   spacing is most of what makes a headline read as this typeface. */
+.header h1 {
+  margin: 0;
+  font-size: 40px;
+  font-weight: 600;
+  line-height: 1.1;
+  letter-spacing: -0.9px;
+}
 
-.header-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.header p { margin: 6px 0 0; color: var(--muted); }
+
+.header-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 
 .card {
   background: var(--panel);
   border: 1px solid var(--line);
-  border-radius: 12px;
-  padding: 18px;
+  border-radius: var(--r-lg);
+  padding: 24px;
 }
 
 .card h2 {
-  margin: 0 0 12px;
-  font-size: 0.95rem;
+  margin: 0 0 4px;
+  font-size: 17px;
   font-weight: 600;
+  line-height: 1.24;
+  letter-spacing: -0.374px;
+  color: var(--text);
+}
+
+/* A one-line caption under a panel title, saying what the panel is for. */
+.card-note {
+  margin: 0 0 18px;
+  font-size: 14px;
+  line-height: 1.43;
+  letter-spacing: -0.224px;
   color: var(--muted);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
 }
 
 .card h3 {
-  margin: 20px 0 8px;
-  font-size: 0.9rem;
+  margin: 24px 0 8px;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.224px;
   color: var(--muted);
 }
 
@@ -134,33 +190,61 @@ body {
   margin-top: 10px;
 }
 
+/* Two button grammars and no third: a pearl capsule for utility, a blue pill
+   for action. The pill radius is itself the "this is the action" signal. */
 button {
   background: var(--panel-soft);
   color: var(--text);
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  padding: 8px 14px;
-  font-size: 0.9rem;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--r-md);
+  padding: 9px 15px;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 400;
+  letter-spacing: -0.224px;
   cursor: pointer;
 }
 
-button:hover:not(:disabled) { background: var(--line); }
+button:hover:not(:disabled) { border-color: var(--line); }
 button:disabled { opacity: 0.45; cursor: not-allowed; }
+
+/* The system-wide press: everything shrinks slightly, nothing changes colour. */
+button:active:not(:disabled) { transform: scale(0.95); }
+
+button:focus-visible {
+  outline: 2px solid var(--accent-focus);
+  outline-offset: 2px;
+}
 
 button.primary {
   background: var(--accent);
   border-color: var(--accent);
   color: var(--accent-ink);
-  font-weight: 600;
+  border-radius: var(--r-pill);
+  padding: 11px 22px;
+  font-size: 17px;
+  letter-spacing: -0.374px;
 }
 
 button.primary:hover:not(:disabled) { filter: brightness(1.08); }
+
+/* The ghost pill - the second CTA when two actions sit together. */
+button.ghost {
+  background: transparent;
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  border-radius: var(--r-pill);
+  padding: 10px 21px;
+  font-size: 17px;
+  letter-spacing: -0.374px;
+}
 
 button.link {
   background: none;
   border: none;
   color: var(--accent);
   padding: 0 0 0 10px;
+  font-size: inherit;
   text-decoration: underline;
 }
 
@@ -204,23 +288,199 @@ tbody tr:last-child td { border-bottom: none; }
 /* --- analytics --- */
 .stat-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   gap: 12px;
 }
 
 .stat {
   background: var(--panel-soft);
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  padding: 12px 14px;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--r-md);
+  padding: 14px 16px;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 3px;
 }
 
-.stat-label { color: var(--muted); font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.04em; }
-.stat-value { font-size: 1.5rem; font-weight: 600; }
-.stat-note { color: var(--muted); font-size: 0.8rem; }
+.stat-label {
+  color: var(--muted);
+  font-size: 14px;
+  letter-spacing: -0.224px;
+}
+
+/* Figures line up column-to-column only with tabular numerals; without them a
+   changing value visibly jitters as its digits change width. */
+.stat-value {
+  font-size: 28px;
+  font-weight: 600;
+  line-height: 1.14;
+  letter-spacing: -0.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.stat-note { color: var(--muted); font-size: 14px; letter-spacing: -0.224px; }
+
+/* --- KPI band: the figures that answer "where am I" without scrolling --- */
+/* Fixed column counts rather than auto-fit: auto-fit fitted five of the six
+   tiles on a row and orphaned the last one on its own. */
+.kpi-band {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 12px;
+}
+
+@media (max-width: 1080px) { .kpi-band { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 680px) { .kpi-band { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 430px) { .kpi-band { grid-template-columns: 1fr; } }
+
+.kpi {
+  position: relative;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  padding: 16px 16px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  overflow: hidden;
+}
+
+/* A hairline of the metric's own colour, so the tiles read as a set of
+   different measures rather than one repeated card. */
+.kpi::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  background: var(--kpi-accent, var(--accent));
+}
+
+.kpi-head {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--muted);
+  font-size: 14px;
+  letter-spacing: -0.224px;
+}
+
+/* Sized so the longest real figure ("21h 18m", "−2h 29m") stays on one line
+   at six across; it wrapped at 40px. */
+.kpi-value {
+  font-size: 30px;
+  font-weight: 600;
+  line-height: 1.12;
+  letter-spacing: -0.7px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.kpi-value .kpi-unit {
+  font-size: 17px;
+  font-weight: 400;
+  letter-spacing: -0.3px;
+  color: var(--muted);
+  margin-left: 2px;
+}
+
+.kpi-note { font-size: 14px; letter-spacing: -0.224px; color: var(--muted); }
+.kpi-note.good { color: var(--good); }
+.kpi-note.warn { color: var(--warn); }
+.kpi-note.bad { color: var(--bad); }
+
+/* A slim progress rail under a KPI that has a target to run against. */
+.kpi-rail {
+  margin-top: 4px;
+  height: 4px;
+  border-radius: var(--r-pill);
+  background: var(--line-soft);
+  overflow: hidden;
+}
+
+.kpi-rail span {
+  display: block;
+  height: 100%;
+  border-radius: var(--r-pill);
+  background: var(--kpi-accent, var(--accent));
+  transition: width 0.9s ease;
+}
+
+/* --- chart furniture --- */
+.chart-frame { width: 100%; }
+
+/* Identity is never colour alone: every chart with two or more series carries
+   this legend, and the series are direct-labelled as well. */
+.chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin: 0 0 12px;
+  padding: 0;
+  list-style: none;
+  font-size: 14px;
+  letter-spacing: -0.224px;
+  color: var(--muted);
+}
+
+.chart-legend li { display: flex; align-items: center; gap: 7px; }
+
+.chart-legend .swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  flex: none;
+}
+
+.chart-legend .value {
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+/* The donut's centre reading - the total the ring is divided from. */
+.donut-wrap { position: relative; }
+
+.donut-centre {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  text-align: center;
+}
+
+.donut-centre .figure {
+  font-size: 28px;
+  font-weight: 600;
+  letter-spacing: -0.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.donut-centre .label { font-size: 14px; color: var(--muted); letter-spacing: -0.224px; }
+
+/* --- ring gauge --- */
+/* The ring is this app's hero visual, so it carries the one drop-shadow the
+   system allows - the same "resting on a surface" weight product shots get. */
+.ring { filter: drop-shadow(var(--shadow-product)); }
+
+.ring-track { stroke: var(--line); }
+.ring-arc {
+  transition: stroke-dashoffset 0.6s ease, stroke 0.6s ease;
+}
+.ring-arc.bad { stroke: var(--bad); }
+.ring-arc.warn { stroke: var(--warn); }
+.ring-arc.good { stroke: var(--good); }
+
+.ring-tick { stroke: color-mix(in srgb, var(--text) 45%, transparent); }
+
+.ring-value {
+  fill: var(--text);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.5px;
+}
+
+.ring-caption { fill: var(--muted); }
 
 label.checkbox {
   display: flex;
@@ -287,10 +547,7 @@ body { transition: background-color 0.25s ease, color 0.25s ease; }
   transition: transform 0.18s ease, border-color 0.18s ease;
 }
 
-.stat:hover {
-  transform: translateY(-2px);
-  border-color: color-mix(in srgb, var(--accent) 50%, var(--line));
-}
+.stat:hover { border-color: color-mix(in srgb, var(--accent) 50%, var(--line)); }
 
 button, input, textarea { transition: background-color 0.18s ease, border-color 0.18s ease; }
 
@@ -324,7 +581,7 @@ button, input, textarea { transition: background-color 0.18s ease, border-color 
 
 /* Theme switch. */
 .theme-switch { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
-.theme-switch button { border: none; border-radius: 0; padding: 7px 11px; background: transparent; }
+.theme-switch button { border: none; border-radius: 0; padding: 8px 12px; background: transparent; gap: 5px; }
 .theme-switch button.active { background: var(--accent); color: var(--accent-ink); font-weight: 600; }
 
 @media (prefers-reduced-motion: reduce) {
@@ -564,9 +821,3 @@ button {
 }
 
 .stat-label { display: flex; align-items: center; gap: 5px; }
-.theme-switch button { gap: 5px; }
-
-/* Framer Motion owns the card lift now, so drop the CSS one to avoid
-   two transforms fighting over the same element. */
-.card:hover { transform: none; }
-.stat:hover { transform: none; }
