@@ -52,6 +52,7 @@ import {
   loggedSeconds,
   todayStatus,
   weekBreakdown,
+  weekRange,
   weekTotals,
   wfhCredit,
 } from './domain/attendance';
@@ -117,6 +118,15 @@ export default function App() {
     () => weekPace(totals.totalSeconds, settings, now),
     [totals.totalSeconds, settings, now],
   );
+  // The history table shows this week by default - older days stay recorded
+  // and still feed every chart, they are just not the list you scroll.
+  const [showAllHistory, setShowAllHistory] = useState(false);
+  const history = useMemo(() => {
+    if (showAllHistory) return records;
+    const from = isoDate(weekRange(now).monday);
+    return records.filter((r) => r.FullDate >= from);
+  }, [records, showAllHistory, now]);
+
   const fortnight = useMemo(() => dailyTrend(records, settings, 10, now), [records, settings, now]);
   const split = useMemo(() => locationSplit(records, settings, now), [records, settings, now]);
   const arrivals = useMemo(() => entryTrend(records), [records]);
@@ -749,8 +759,22 @@ export default function App() {
 
       <MotionSection className="card">
         <h2>History</h2>
+        <p className="card-note">
+          {showAllHistory
+            ? `Every day recorded, newest first. Click edit on any row to correct its times.`
+            : `This week, newest first. Click edit on any row to correct its times.`}
+          {records.length > history.length || showAllHistory ? (
+            <button className="link" onClick={() => setShowAllHistory((v) => !v)}>
+              {showAllHistory ? 'show this week only' : `show all ${records.length} day(s)`}
+            </button>
+          ) : null}
+        </p>
         {records.length === 0 ? (
           <p className="muted">Nothing logged yet.</p>
+        ) : history.length === 0 ? (
+          <p className="muted">
+            Nothing logged this week yet - {records.length} earlier day(s) are still recorded.
+          </p>
         ) : (
           <table>
             <thead>
@@ -763,7 +787,7 @@ export default function App() {
               </tr>
             </thead>
             <tbody>
-              {records.slice(0, 20).map((record) =>
+              {history.slice(0, 40).map((record) =>
                 editing === record.FullDate ? (
                   <EditRow
                     key={record.FullDate}
