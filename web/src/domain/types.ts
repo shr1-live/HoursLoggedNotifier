@@ -46,7 +46,8 @@ export const defaultSettings: Settings = {
   requiredOfficeDays: 3,
   wfhDaysPerWeek: 2,
   dailyGoalHours: 9,
-  defaultWfhHours: 9.5,
+  // Matches the desktop app, which credits a home day the daily goal.
+  defaultWfhHours: 9,
   workdaysPerWeek: 5,
   targetExit: '95',
   alertThresholds: [50, 75, 95, 100],
