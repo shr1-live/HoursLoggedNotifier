@@ -1,0 +1,13 @@
+{
+  "name": "keka-sync",
+  "private": true,
+  "description": "Local-only: reads logged hours from the Keka portal and merges them into shifts.json. Never deployed - the hosted dashboard cannot reach Keka.",
+  "scripts": {
+    "login": "node keka.js login",
+    "dump": "node keka.js dump",
+    "fetch": "node keka.js fetch"
+  },
+  "dependencies": {
+    "playwright-core": "^1.63.0"
+  }
+}
