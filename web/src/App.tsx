@@ -806,7 +806,9 @@ export default function App() {
                     <td>{record.Date}</td>
                     <td>{record.IsWfh ? 'WFH' : (record.Location ?? 'Office')}</td>
                     <td>
-                      {record.IsWfh ? '—' : formatTimeOfDay(parseClock(record.EntryTime))}
+                      {record.EntryTime
+                        ? formatTimeOfDay(parseClock(record.EntryTime))
+                        : '—'}
                       {record.ActualExitTime && (
                         <span className="muted">
                           {' → '}
