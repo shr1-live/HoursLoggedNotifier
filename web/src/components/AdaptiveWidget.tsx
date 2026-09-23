@@ -5,6 +5,7 @@ import { VerticalBarWidget } from './VerticalBarWidget';
 
 interface AdaptiveWidgetProps {
   fraction: number | null;
+  targetFraction: number;
   loggedSeconds: number;
   remainingSeconds: number;
   officeFraction: number;

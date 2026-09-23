@@ -151,8 +151,10 @@ export interface TodayStatus {
   spentSeconds: number;
   left95Seconds: number;
   left100Seconds: number;
-  /** 0..1 through the scheduled shift. */
+  /** 0..1 through the whole scheduled shift. */
   fraction: number;
+  /** The point in that shift at which the day is done - 0.95 by default. */
+  targetFraction: number;
   /** True once the day has been signed off, so the clock has stopped. */
   clockedOut: boolean;
   /** True once the chosen finish line is reached. */
@@ -175,11 +177,11 @@ export function todayStatus(records: ShiftRecord[], now = new Date(), targetExit
 
   const spentSeconds = Math.max(0, upTo - entry);
 
-  // The finish line is the 95% exit, because that is when the day is actually
-  // done - measuring to 100% means the bar never reads as complete when you
-  // leave. Settings can move it to the full exit for anyone who stays.
+  // The percentage is of the whole shift, so the 95% exit genuinely reads as
+  // 95%. Measuring to the 95% exit instead - as this did briefly - makes the
+  // ring hit 100% at 6:57pm and means the number 95 can never be shown at all.
   const goalExit = targetExit === '100' ? exit100 : exit95;
-  const total = Math.max(1, goalExit - entry);
+  const total = Math.max(1, exit100 - entry);
 
   return {
     record,
@@ -187,6 +189,9 @@ export function todayStatus(records: ShiftRecord[], now = new Date(), targetExit
     left95Seconds: Math.max(0, exit95 - upTo),
     left100Seconds: Math.max(0, exit100 - upTo),
     fraction: Math.min(1, spentSeconds / total),
+    // Where the day is done - 0.95 of the shift unless the settings say to
+    // stay for all of it. The gauges turn green here rather than at 100%.
+    targetFraction: Math.min(1, (goalExit - entry) / total),
     clockedOut: actualExit !== null,
     /** True once the chosen finish line is reached. */
     reachedGoal: upTo >= goalExit,

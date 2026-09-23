@@ -903,10 +903,15 @@ static DashboardSnapshot? BuildSnapshot(ShiftStorageService storage, EmailServic
     var left95 = ShiftCalculationService.GetTimeLeft(shift, shift.Exit95);
     var left100 = ShiftCalculationService.GetTimeLeft(shift, shift.Exit100);
 
-    // The finish line is the 95% exit - that is when the day is actually done,
-    // so measuring to 100% would mean the ring never reads as complete on leaving.
-    var total = shift.Exit95.ToTimeSpan() - shift.EntryTime.ToTimeSpan();
+    // The percentage is of the whole shift, so the 95% exit genuinely reads as
+    // 95%. Measuring to the 95% exit instead - as this did - makes the gauge
+    // show 100% at 6:57pm and means the number 95 can never appear at all.
+    var total = shift.Exit100.ToTimeSpan() - shift.EntryTime.ToTimeSpan();
     if (total <= TimeSpan.Zero) total = TimeSpan.FromHours(9);
+    // Where the day is done, as a share of that shift - the gauges turn green
+    // here rather than at a full 100%.
+    var targetFraction = Math.Clamp(
+        (shift.Exit95.ToTimeSpan() - shift.EntryTime.ToTimeSpan()) / total, 0d, 1d);
 
     var all = storage.LoadAll();
     var officeLogged = AttendanceReportService.GetOfficeHoursThisWeek(all);
@@ -922,6 +927,7 @@ static DashboardSnapshot? BuildSnapshot(ShiftStorageService storage, EmailServic
         Clock: DateTime.Now.ToString("dddd, d MMM  h:mm:ss tt"),
         Logged: ShiftCalculationService.FormatDuration(spent),
         Fraction: Math.Clamp(spent.TotalSeconds / total.TotalSeconds, 0d, 1d),
+        TargetFraction: targetFraction,
         Entry: shift.EntryTime.ToString("h:mm:ss tt"),
         Location: shift.Location ?? "",
         Exit95: shift.Exit95.ToString("h:mm:ss tt"),
@@ -946,10 +952,15 @@ static List<string> BuildDashboardLines(ShiftRecord shift, ShiftStorageService s
     var left95 = ShiftCalculationService.GetTimeLeft(shift, shift.Exit95);
     var left100 = ShiftCalculationService.GetTimeLeft(shift, shift.Exit100);
 
-    // The finish line is the 95% exit - that is when the day is actually done,
-    // so measuring to 100% would mean the ring never reads as complete on leaving.
-    var total = shift.Exit95.ToTimeSpan() - shift.EntryTime.ToTimeSpan();
+    // The percentage is of the whole shift, so the 95% exit genuinely reads as
+    // 95%. Measuring to the 95% exit instead - as this did - makes the gauge
+    // show 100% at 6:57pm and means the number 95 can never appear at all.
+    var total = shift.Exit100.ToTimeSpan() - shift.EntryTime.ToTimeSpan();
     if (total <= TimeSpan.Zero) total = TimeSpan.FromHours(9);
+    // Where the day is done, as a share of that shift - the gauges turn green
+    // here rather than at a full 100%.
+    var targetFraction = Math.Clamp(
+        (shift.Exit95.ToTimeSpan() - shift.EntryTime.ToTimeSpan()) / total, 0d, 1d);
 
     var fraction = Math.Clamp(spent.TotalSeconds / total.TotalSeconds, 0d, 1d);
     var all = storage.LoadAll();

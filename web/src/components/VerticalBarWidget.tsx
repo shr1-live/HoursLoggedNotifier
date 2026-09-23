@@ -2,6 +2,8 @@ import { formatDuration } from '../domain/time';
 
 interface VerticalBarWidgetProps {
   fraction: number | null;
+  /** Where the day is done - 0.95 of the shift by default. */
+  targetFraction: number;
   loggedSeconds: number;
   remainingSeconds: number;
   officeFraction: number;
@@ -14,6 +16,7 @@ interface VerticalBarWidgetProps {
  */
 export function VerticalBarWidget({
   fraction,
+  targetFraction,
   loggedSeconds,
   remainingSeconds,
   officeFraction,
@@ -28,8 +31,8 @@ export function VerticalBarWidget({
   }
 
   const percent = Math.round(fraction * 100);
-  const state = fraction >= 0.999 ? 'good' : fraction >= 0.75 ? 'warn' : 'bad';
-  const running = fraction < 1;
+  const state = fraction >= targetFraction ? 'good' : fraction >= targetFraction * 0.8 ? 'warn' : 'bad';
+  const running = fraction < targetFraction;
 
   return (
     <div className="vbar-widget">

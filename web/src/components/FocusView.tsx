@@ -32,7 +32,11 @@ export function FocusView({
   }
 
   const percent = Math.round(today.fraction * 100);
-  const state = today.fraction >= 0.999 ? 'good' : today.fraction >= 0.75 ? 'warn' : '';
+  // Green at the point the day is done, which is the 95% exit - not at a
+  // full shift, which is half an hour later.
+  const state = today.fraction >= today.targetFraction
+    ? 'good'
+    : today.fraction >= today.targetFraction * 0.8 ? 'warn' : '';
 
   return (
     <div className="focus">
@@ -40,6 +44,7 @@ export function FocusView({
 
       <RingGauge
         fraction={today.fraction}
+        goodThreshold={today.targetFraction}
         value={formatDuration(today.spentSeconds)}
         caption="logged today"
         size={196}

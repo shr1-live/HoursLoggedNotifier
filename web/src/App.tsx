@@ -340,6 +340,12 @@ export default function App() {
     : 0;
   const to95 = totals.officeMark95Seconds - totals.officeSeconds;
   const late = todayRecord && !todayRecord.IsWfh ? lateBySeconds(todayRecord) : null;
+  // The widgets count down to the finish line the percentage is measured
+  // against; they used to show time to the full shift beside a percentage of
+  // the 95% exit, so the bar filled while the text still claimed an hour left.
+  const targetLeftSeconds = today
+    ? (settings.targetExit === '100' ? today.left100Seconds : today.left95Seconds)
+    : 0;
 
   // The popup shares all the state above, so it stays in step with the tab
   // that opened it without any message passing.
@@ -347,8 +353,9 @@ export default function App() {
     return (
       <AdaptiveWidget
         fraction={today ? today.fraction : null}
+        targetFraction={today ? today.targetFraction : 0.95}
         loggedSeconds={today ? today.spentSeconds : 0}
-        remainingSeconds={today ? today.left100Seconds : 0}
+        remainingSeconds={today ? targetLeftSeconds : 0}
         officeFraction={officeFraction}
       />
     );
@@ -374,8 +381,9 @@ export default function App() {
         && createPortal(
           <AdaptiveWidget
             fraction={today ? today.fraction : null}
+            targetFraction={today ? today.targetFraction : 0.95}
             loggedSeconds={today ? today.spentSeconds : 0}
-            remainingSeconds={today ? today.left100Seconds : 0}
+            remainingSeconds={today ? targetLeftSeconds : 0}
             officeFraction={officeFraction}
           />,
           pip.container,
@@ -513,7 +521,7 @@ export default function App() {
                 fraction={today.fraction}
                 value={formatDuration(today.spentSeconds)}
                 caption={today.reachedGoal ? 'you can leave' : 'until the 95% logout'}
-                goodThreshold={1}
+                goodThreshold={today.targetFraction}
               />
               <dl className="facts">
                 <div>
