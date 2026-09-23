@@ -144,14 +144,32 @@ export function parseShiftBlock(
   // Today is the only sensible reading of a paste with no date on it.
   const day = date ?? today;
 
+  // Refused rather than stored, for office and WFH days alike: a logout before
+  // the entry is either a typo or a missing am/pm, and keeping it would credit
+  // the day nothing at all.
+  if (entry !== null && actualExit !== null && actualExit < entry) {
+    return {
+      error: `The logout time (${toClock(actualExit)}) is before the entry time (${toClock(entry)}).`,
+    };
+  }
+
   // A WFH day may be pasted with only a date and a shift range - there is no
   // biometric entry to record, so the scheduled shift is what gets credited.
   if (asWfh) {
+    // What was actually worked beats what was scheduled, which beats the
+    // default. A block carrying 9:06 to 19:02 is a ten-hour day; crediting the
+    // 10:00-19:00 roster instead threw away an hour you had already worked.
+    const worked = entry !== null && actualExit !== null ? { from: entry, to: actualExit } : null;
+    const scheduled = shiftStart !== null && shiftEnd !== null
+      ? { from: shiftStart, to: shiftEnd }
+      : null;
+    const span = worked ?? scheduled;
+
     let wfhHours: number | undefined;
-    if (shiftStart !== null && shiftEnd !== null) {
-      let span = shiftEnd - shiftStart;
-      if (span < 0) span += 86400;
-      wfhHours = Number((span / 3600).toFixed(4));
+    if (span) {
+      let seconds = span.to - span.from;
+      if (seconds < 0) seconds += 86400;
+      wfhHours = Number((seconds / 3600).toFixed(4));
     }
 
     return {
@@ -159,8 +177,13 @@ export function parseShiftBlock(
         Date: displayDate(day),
         FullDate: isoDate(day),
         IsWfh: true,
-        // Left undefined when no range was given, so the default applies.
+        // Left undefined when the paste carried no times at all, so the
+        // configured default applies.
         WfhHours: wfhHours,
+        // Kept so the history can show the day rather than a pair of dashes,
+        // and so the credited figure can be checked against its source.
+        EntryTime: entry === null ? undefined : toClock(entry),
+        ActualExitTime: actualExit === null ? null : toClock(actualExit),
       },
       portalStatus,
     };
@@ -168,13 +191,6 @@ export function parseShiftBlock(
 
   if (entry === null) {
     return { error: 'Could not find an entry time such as "10:23:44 AM" or "10.23".' };
-  }
-  // Refused rather than stored: a logout before the entry is either a typo or
-  // a missing am/pm, and keeping it would silently credit the day zero hours.
-  if (actualExit !== null && actualExit < entry) {
-    return {
-      error: `The logout time (${toClock(actualExit)}) is before the entry time (${toClock(entry)}).`,
-    };
   }
 
   // With no scheduled range in the paste, the day is assumed to be a full one
