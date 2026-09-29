@@ -3,6 +3,12 @@ interface RingGaugeProps {
   fraction: number;
   value: string;
   caption?: string;
+  /**
+   * A fine reading above the value - the percentage to two decimals, so the
+   * ring is visibly moving between whole-percent steps rather than looking
+   * frozen for minutes at a time.
+   */
+  sub?: string;
   /** Fraction at which the ring turns green. */
   goodThreshold?: number;
   size?: number;
@@ -21,6 +27,7 @@ export function RingGauge({
   fraction,
   value,
   caption,
+  sub,
   goodThreshold = 0.95,
   size = 168,
 }: RingGaugeProps) {
@@ -75,10 +82,21 @@ export function RingGauge({
           strokeWidth={2}
         />
       )}
+      {sub && (
+        <text
+          className="ring-sub"
+          x={centre}
+          y={centre - size * 0.13}
+          textAnchor="middle"
+          fontSize={size * 0.088}
+        >
+          {sub}
+        </text>
+      )}
       <text
         className="ring-value"
         x={centre}
-        y={caption ? centre - 2 : centre + 6}
+        y={caption ? centre + size * 0.03 : centre + 6}
         textAnchor="middle"
         fontSize={size * 0.17}
         fontWeight={600}
@@ -89,7 +107,7 @@ export function RingGauge({
         <text
           className="ring-caption"
           x={centre}
-          y={centre + 22}
+          y={centre + size * 0.155}
           textAnchor="middle"
           fontSize={size * 0.082}
         >

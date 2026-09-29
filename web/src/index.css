@@ -923,3 +923,33 @@ button {
 @media all and (display-mode: standalone), all and (display-mode: window-controls-overlay) {
   .pip-body, .adaptive-host { background: var(--bg); }
 }
+
+/* The fine percentage above the ring's headline figure. */
+.ring-sub {
+  fill: var(--muted);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.2px;
+}
+
+/* A two-way switch, styled like the theme control it sits below. */
+.segmented {
+  display: inline-flex;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  overflow: hidden;
+  margin-top: 14px;
+}
+
+.segmented button {
+  border: none;
+  border-radius: 0;
+  padding: 7px 14px;
+  background: transparent;
+  font-size: 14px;
+}
+
+.segmented button.active {
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-weight: 600;
+}
