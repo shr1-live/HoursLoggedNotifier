@@ -145,6 +145,23 @@ export default function App() {
   const [theme, setTheme] = useState<Theme>(() => loadTheme());
   const [pip, setPip] = useState<{ window: Window; container: HTMLElement } | null>(null);
   const [persistent, setPersistent] = useState(false);
+  // Which figure the ring puts in the middle. Remaining is the default: the
+  // question is almost always "how much longer", not "how much so far".
+  const [ringShows, setRingShows] = useState<'remaining' | 'logged'>(() => {
+    try {
+      return localStorage.getItem('hln.ringShows') === 'logged' ? 'logged' : 'remaining';
+    } catch {
+      return 'remaining';
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('hln.ringShows', ringShows);
+    } catch {
+      // Not fatal - the choice still holds for this session.
+    }
+  }, [ringShows]);
 
   useEffect(() => {
     applyTheme(theme);
@@ -517,12 +534,42 @@ export default function App() {
           <h2>Today</h2>
           {today ? (
             <>
+              {/* The middle used to read the logged time under a caption that
+                  said "until the 95% logout" - the number was never the one
+                  the label described. */}
               <RingGauge
                 fraction={today.fraction}
-                value={formatDuration(today.spentSeconds)}
-                caption={today.reachedGoal ? 'you can leave' : 'until the 95% logout'}
+                value={
+                  ringShows === 'remaining'
+                    ? (targetLeftSeconds > 0 ? formatDuration(targetLeftSeconds) : 'done')
+                    : formatDuration(today.spentSeconds)
+                }
+                caption={
+                  ringShows === 'remaining'
+                    ? (today.reachedGoal
+                        ? 'you can leave'
+                        : `until the ${settings.targetExit}% logout`)
+                    : 'logged so far'
+                }
+                // Two decimals so the ring reads as moving: a hundredth of a
+                // nine-hour day is about three seconds.
+                sub={`${(today.fraction * 100).toFixed(2)}%`}
                 goodThreshold={today.targetFraction}
               />
+              <span className="segmented" role="group" aria-label="Ring shows">
+                <button
+                  className={ringShows === 'remaining' ? 'active' : ''}
+                  onClick={() => setRingShows('remaining')}
+                >
+                  Remaining
+                </button>
+                <button
+                  className={ringShows === 'logged' ? 'active' : ''}
+                  onClick={() => setRingShows('logged')}
+                >
+                  Logged
+                </button>
+              </span>
               <dl className="facts">
                 <div>
                   <dt>Entry</dt>
