@@ -1,4 +1,5 @@
 import { formatDuration } from '../domain/time';
+import type { Density } from './AdaptiveWidget';
 
 interface BarWidgetProps {
   /** 0..1 through today's whole shift, or null when nothing is running. */
@@ -8,6 +9,8 @@ interface BarWidgetProps {
   loggedSeconds: number;
   remainingSeconds: number;
   officeFraction: number;
+  /** How much detail there is room for. */
+  density: Density;
 }
 
 /**
@@ -21,6 +24,7 @@ export function BarWidget({
   loggedSeconds,
   remainingSeconds,
   officeFraction,
+  density,
 }: BarWidgetProps) {
   if (fraction === null) {
     return (
@@ -50,12 +54,15 @@ export function BarWidget({
         <div className="bar-mark" style={{ left: `${targetFraction * 100}%` }} title="the point you can leave" />
       </div>
 
-      <span className="bar-sub">
-        <strong>{formatDuration(loggedSeconds)}</strong>
-        {remainingSeconds > 0 ? ` · ${formatDuration(remainingSeconds)} left` : ' · done'}
-        {' · week '}
-        {Math.round(officeFraction * 100)}%
-      </span>
+      {/* At the smallest sizes the bar and the percentage are the whole
+          point; the rest is dropped rather than crushed. */}
+      {density !== 'minimal' && (
+        <span className="bar-sub">
+          <strong>{formatDuration(loggedSeconds)}</strong>
+          {remainingSeconds > 0 ? ` · ${formatDuration(remainingSeconds)} left` : ' · done'}
+          {density === 'full' && ` · week ${Math.round(officeFraction * 100)}%`}
+        </span>
+      )}
     </div>
   );
 }
