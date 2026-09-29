@@ -1,4 +1,5 @@
 import { formatDuration } from '../domain/time';
+import type { Density } from './AdaptiveWidget';
 
 interface VerticalBarWidgetProps {
   fraction: number | null;
@@ -7,6 +8,8 @@ interface VerticalBarWidgetProps {
   loggedSeconds: number;
   remainingSeconds: number;
   officeFraction: number;
+  /** How much detail there is room for. */
+  density: Density;
 }
 
 /**
@@ -20,6 +23,7 @@ export function VerticalBarWidget({
   loggedSeconds,
   remainingSeconds,
   officeFraction,
+  density,
 }: VerticalBarWidgetProps) {
   if (fraction === null) {
     return (
@@ -44,16 +48,26 @@ export function VerticalBarWidget({
           style={{ height: `${Math.min(100, fraction * 100)}%` }}
         />
         {/* Measured from the bottom, since the column fills upwards. */}
-        <div className="vbar-mark" style={{ bottom: '95%' }} title="95%" />
+        <div
+          className="vbar-mark"
+          style={{ bottom: `${targetFraction * 100}%` }}
+          title="the point you can leave"
+        />
       </div>
 
-      <span className="vbar-sub">
-        <strong>{formatDuration(loggedSeconds)}</strong>
-        <br />
-        {remainingSeconds > 0 ? `${formatDuration(remainingSeconds)} left` : 'done'}
-        <br />
-        <span className="muted">wk {Math.round(officeFraction * 100)}%</span>
-      </span>
+      {density !== 'minimal' && (
+        <span className="vbar-sub">
+          <strong>{formatDuration(loggedSeconds)}</strong>
+          {density === 'full' && (
+            <>
+              <br />
+              {remainingSeconds > 0 ? `${formatDuration(remainingSeconds)} left` : 'done'}
+              <br />
+              <span className="muted">wk {Math.round(officeFraction * 100)}%</span>
+            </>
+          )}
+        </span>
+      )}
     </div>
   );
 }

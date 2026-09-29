@@ -617,12 +617,12 @@ button, input, textarea { transition: background-color 0.18s ease, border-color 
   margin-top: -6px;
 }
 
-.mini-logged { font-size: 0.95rem; font-weight: 600; transition: color 0.6s ease; }
+.mini-logged { font-size: 15px; font-weight: 600; transition: color 0.6s ease; }
 .mini-logged.bad { color: var(--bad); }
 .mini-logged.warn { color: var(--warn); }
 .mini-logged.good { color: var(--good); }
-.mini-sub { font-size: 0.72rem; color: var(--muted); }
-.mini-percent { font-size: 2rem; font-weight: 700; }
+.mini-sub { font-size: 11px; color: var(--muted); }
+.mini-percent { font-size: 30px; font-weight: 700; }
 .mini-empty { gap: 4px; }
 
 /* --- adaptive widget: ring when square, bar when stretched wide --- */
@@ -632,8 +632,8 @@ button, input, textarea { transition: background-color 0.18s ease, border-color 
   height: 100%;
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 0 10px;
+  gap: 8px;
+  padding: 0 8px;
   background: var(--bg);
   -webkit-user-select: none;
   user-select: none;
@@ -641,9 +641,9 @@ button, input, textarea { transition: background-color 0.18s ease, border-color 
 }
 
 .bar-percent {
-  font-size: 0.95rem;
+  font-size: 15px;
   font-weight: 700;
-  min-width: 42px;
+  min-width: 36px;
   transition: color 0.6s ease;
 }
 
@@ -697,7 +697,7 @@ button, input, textarea { transition: background-color 0.18s ease, border-color 
   background: color-mix(in srgb, var(--text) 55%, transparent);
 }
 
-.bar-sub { font-size: 0.72rem; color: var(--muted); }
+.bar-sub { font-size: 11px; color: var(--muted); }
 .bar-sub strong { color: var(--text); font-weight: 600; }
 
 
@@ -716,7 +716,7 @@ button, input, textarea { transition: background-color 0.18s ease, border-color 
 }
 
 .vbar-percent {
-  font-size: 0.95rem;
+  font-size: 15px;
   font-weight: 700;
   transition: color 0.6s ease;
 }
@@ -772,7 +772,7 @@ button, input, textarea { transition: background-color 0.18s ease, border-color 
   background: color-mix(in srgb, var(--text) 55%, transparent);
 }
 
-.vbar-sub { font-size: 0.66rem; color: var(--muted); line-height: 1.35; }
+.vbar-sub { font-size: 10px; color: var(--muted); line-height: 1.3; }
 .vbar-sub strong { color: var(--text); font-weight: 600; }
 
 .signoff { margin-top: 14px; width: 100%; justify-content: center; }
@@ -888,4 +888,38 @@ button {
 @media (max-width: 560px) {
   .plan-body h2 { font-size: 22px; }
   .plan-flags { flex-direction: row; flex-wrap: wrap; gap: 12px; }
+}
+
+
+/* --- widget density ------------------------------------------------------
+   The page runs a 17px root for reading comfort, which silently inflated
+   every widget by six percent - room a picture-in-picture window does not
+   have. Widgets are sized in pixels instead, and give up detail as they are
+   dragged smaller rather than crushing it together. */
+
+.adaptive-host { overflow: hidden; }
+
+.density-tight .bar-widget { gap: 6px; padding: 0 7px; }
+.density-tight .bar-percent { font-size: 14px; min-width: 33px; }
+.density-tight .bar-sub { font-size: 10px; }
+
+.density-minimal .bar-widget { gap: 5px; padding: 0 5px; }
+.density-minimal .bar-percent { font-size: 13px; min-width: 30px; }
+.density-minimal .bar-track { height: 6px; }
+
+.density-tight .vbar-widget { gap: 4px; padding: 6px 4px; }
+.density-tight .vbar-percent { font-size: 14px; }
+.density-tight .vbar-sub { font-size: 9.5px; }
+
+.density-minimal .vbar-widget { gap: 3px; padding: 5px 3px; }
+.density-minimal .vbar-percent { font-size: 12px; }
+.density-minimal .vbar-track { width: 8px; }
+
+.density-tight .mini-percent { font-size: 24px; }
+.density-minimal .mini-percent { font-size: 20px; }
+.density-minimal .mini-meta { display: none; }
+
+/* An installed window has no address bar, so the widget owns every pixel. */
+@media all and (display-mode: standalone), all and (display-mode: window-controls-overlay) {
+  .pip-body, .adaptive-host { background: var(--bg); }
 }
